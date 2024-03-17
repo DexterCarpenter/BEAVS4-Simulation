@@ -164,12 +164,11 @@ grid on
 
 %% Summary of Simulation
 
-% output summary to cmd window for each simulation
 for i = 1:n
-    Summary(Time(:,i), h(:,i), V(:,i), Cd(:,i), RocketData, RocketEvent, SimName{:,i})
+    Summary(Time(:,i), h(:,i), V(:,i), Cd(:,i), RocketData, SimName{:,i})
 end
 
-%% Functions --------------------------------------------------------------
+%% Functions
 
 function [Time, h, V, Cd] = FEuler(RocketData, RocketEvent, Extension, Cd_rocket, Cd_BEAVS, BladeWdth, BladeCnt)
   % This function takes OpenRocket Data, BEAVS blade extension, and Cd's
@@ -230,19 +229,14 @@ function [Time, h, V, Cd] = FEuler(RocketData, RocketEvent, Extension, Cd_rocket
     end
 end
 
-% Format and Summarize Data to Command Window
-function Summary(Time, h, V, Cd, RocketData, RocketEvent, Name)
-    % Convert to ft
+function Summary(Time, h, V, Cd, RocketData, Name)
     h = h*3.28084; V = V*3.28084;
     RocketData.Altitude = RocketData.Altitude*3.28084;
-    % find coast phase start time
-    iterStart = find(RocketData.Time==RocketEvent.Time(4));
-    % print to cmd window
     fprintf('\n----- %s -----\n',Name);
     fprintf('Apogee: %0.0f ft\n',max(h));
     fprintf('Apogee Difference: %0.0f ft\n',max(RocketData.Altitude)-max(h));
     fprintf('\n');
     fprintf('Max Velocity: %0.0f ft/s\n',max(V));
     fprintf('\n');
-    fprintf('Cd_min: %0.2f, Cd_max: %0.2f\n',min(Cd(iterStart:end)),max(Cd(iterStart:end)));
+    fprintf('Cd_min: %0.2f, Cd_max: %0.2f\n',min(Cd()),max(Cd));
 end
