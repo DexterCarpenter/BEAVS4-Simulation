@@ -23,6 +23,7 @@ clc
 
 % setup figures
 fig1 = figure(1); figure(fig1); clf
+fig2 = figure(2); figure(fig2); clf
 
 %% Import Data
 % The OpenRocket file export must have the following config
@@ -63,14 +64,6 @@ RocketData = fillmissing(RocketData, 'previous');
 
 %% Additional Script Inputs
 
-BladeWdth = 7*10^-2; % width of BEAVS Blade (convert to meters)
-BladeCnt = 2;        % Number of Blades
-
-% extension of BEAVS over TIME (convert to meters)
-BEAVSExtn = zeros(numel(RocketData.Time),1) + 6*10^-2;
-
-%% Implement Forward Euler with OpenRocket Cd
-
 % Fill Vars with RocketData to start (these values will be used as
 % reference
 Time = RocketData.Time;
@@ -78,9 +71,28 @@ h    = RocketData.Altitude;
 V    = RocketData.VerticalVelocity;
 Cd   = RocketData.DragCoefficient;
 
+BladeWdth = 7*10^-2; % width of BEAVS Blade (convert to meters)
+BladeCnt = 2;        % Number of Blades
+BladeExtnRate = 0.074;   % meters per second
+
+% extension of BEAVS over TIME (convert to meters)
+BEAVSExtn = zeros(numel(RocketData.Time),1) + 6*10^-2;
+BEAVSExtnMAX = 0.06; % max extension of BEAVS in m
+BurnoutTime = RocketEvent.Time(4);
+iterStart = find(RocketData.Time==BurnoutTime); % iteration start time
+BEAVSExtn(1:iterStart) = 0;
+for i = iterStart:numel(BEAVSExtn)
+    if BEAVSExtn(i) >= BEAVSExtnMAX
+        break
+    end
+    BEAVSExtn(i+1) = BEAVSExtn(i) + BladeExtnRate*( Time(i+1) - Time(i) );
+end
+
+%% Implement Forward Euler with OpenRocket Cd
+
 % Use Forward Euler to calculate velocity and altitude
 
-% High End Cd Estimation (More Beneficial)
+% Use OpenRocket Cd
 n = 2;
 Cd_rocket = RocketData.DragCoefficient;
 Cd_BEAVS = 1.10;
@@ -94,7 +106,8 @@ Cd_BEAVS = 1.00;
 
 %% Plot Results
 
-% PLOT
+% PLOT Alt and Vel
+figure(fig1);
 hold on
 % plot altitudes
 yyaxis left % alt on left
@@ -119,6 +132,19 @@ yyaxis left
 yline(10000,'--','Target Apogee','LabelVerticalAlignment','middle','LabelHorizontalAlignment','right');
 legend('OpenRocket','Max Cd BEAVS','Min Cd BEAVS','Location','southeast')
 title('BEAVS 4.0 Control Range Graphic');
+grid on
+
+% Plot Cd
+figure(fig2);
+hold on
+plot(Time(:,1:2),Cd(:,1:2));
+lims = [0 50 0 1.2];
+axis(lims);
+xline(RocketEvent.Time(4),'-',{'Motor Cutoff'},'LabelVerticalAlignment','bottom','LabelHorizontalAlignment','left');
+xlabel('Time (s)');
+ylabel('Cd total');
+title('Cd over Time');
+legend('w/o BEAVS','w/ BEAVS','Location','SouthEast');
 grid on
 
 %% Summary of Simulation

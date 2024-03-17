@@ -108,7 +108,7 @@ FeedbackBool = false;
 
 %% Plot Results
 
-% PLOT
+% PLOT Alt and Vel
 figure(fig1);
 hold on
 % plot altitudes
@@ -136,7 +136,7 @@ legend('OpenRocket','Max Cd BEAVS','Min Cd BEAVS','Location','southeast')
 title('BEAVS 4.0 Control Range Graphic');
 grid on
 
-
+% Plot Cd
 figure(fig2);
 hold on
 plot(Time(:,1:2),Cd(:,1:2));
