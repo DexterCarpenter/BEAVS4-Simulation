@@ -24,9 +24,10 @@ clc
 % setup figures
 fig1 = figure(1); figure(fig1); clf
 fig2 = figure(2); figure(fig2); clf
+fig3 = figure(3); figure(fig3); clf
 
 %% Import Data
-% The OpenRocket file export must have the following config
+% OpenRocket Data Export config:
     % Must go Edit > Preferences > Units > Default Metric > Ok
     % Select All Variables
     % Format > Field Seperator String > Comma
@@ -36,6 +37,12 @@ fig2 = figure(2); figure(fig2); clf
     % Section Comments > Don't Include Flight Events
     % Comment Character > #
     % Keep Field Descriptions
+    
+% OpenRocket Event Export config:
+    % Variables to Export > None
+    % Format Settings > csv
+    % Include Flight Events
+    % Comment Character > #
 
 % Get OpenRocket Data
 disp('You can Press ENTER to select default data');
@@ -73,180 +80,122 @@ Cd   = RocketData.DragCoefficient;
 
 BladeWdth = 7*10^-2; % width of BEAVS Blade (convert to meters)
 BladeCnt = 2;        % Number of Blades
-BladeExtnRate = 0.074;   % meters per second
+BladeExtnRate = 110e-3;   % meters per second
+BEAVSExtnMAX = 0.06; % max extension of BEAVS in m
 
 % extension of BEAVS over TIME (convert to meters)
 BEAVSExtn = zeros(numel(RocketData.Time),1) + 6*10^-2;
-BEAVSExtnMAX = 0.06; % max extension of BEAVS in m
-BurnoutTime = RocketEvent.Time(4);
+BurnoutTime = RocketEvent.Time(4); % define time of burnout
 iterStart = find(RocketData.Time==BurnoutTime); % iteration start time
-BEAVSExtn(1:iterStart) = 0;
+BEAVSExtn(1:iterStart) = 0; % no extension in boost phase
+% ramp up BEAVS extension until fully extended at extension rate
 for i = iterStart:numel(BEAVSExtn)
-    if BEAVSExtn(i) >= BEAVSExtnMAX
-        break
-    end
-    BEAVSExtn(i+1) = BEAVSExtn(i) + BladeExtnRate*( Time(i+1) - Time(i) );
+    if BEAVSExtn(i) >= BEAVSExtnMAX; break; end
+    BEAVSExtn(i+1) = BEAVSExtn(i) + BladeExtnRate*( RocketData.Time(i+1) - RocketData.Time(i) );
 end
 
 %% Implement Forward Euler with OpenRocket Cd
-
 % Use Forward Euler to calculate velocity and altitude
 
-% Use OpenRocket Cd
+% OpenRocket Simulation, No BEAVS
+n = 1;
+SimName(n) = {'OpenRocket'};
+Time = RocketData.Time;
+h    = RocketData.Altitude;
+V    = RocketData.VerticalVelocity;
+Cd   = RocketData.DragCoefficient;
+
+% Include BEAVS, Vary Cd
 n = 2;
+SimName(n) = {'Varying Cd'};
 Cd_rocket = RocketData.DragCoefficient;
 Cd_BEAVS = 1.10;
-FeedbackBool = false;
-[Time(:,n), h(:,n), V(:,n), Cd(:,n)] = FEuler(RocketData, RocketEvent, BEAVSExtn, Cd_rocket, Cd_BEAVS, BladeWdth, BladeCnt, FeedbackBool);
+[Time(:,n), h(:,n), V(:,n), Cd(:,n)] = FEuler(RocketData, RocketEvent, BEAVSExtn, Cd_rocket, Cd_BEAVS, BladeWdth, BladeCnt);
 
-% Low End Cd Estimation (Least Beneficial for BEAVS)
+% Include BEAVS, Feedback
 n = 3;
-Cd_rocket = min(RocketData.DragCoefficient);
-Cd_BEAVS = 1.00;
-FeedbackBool = false;
-[Time(:,n), h(:,n), V(:,n), Cd(:,n)] = FEuler(RocketData, RocketEvent, BEAVSExtn, Cd_rocket, Cd_BEAVS, BladeWdth, BladeCnt, FeedbackBool);
+SimName(n) = {'Feedback'};
+Cd_rocket = RocketData.DragCoefficient;
+Cd_BEAVS = 1.10;
+[Time(:,n), h(:,n), V(:,n), Cd(:,n), Extn, ExtnDesire] = FEulerFeedback(RocketData,RocketEvent,Cd_rocket,Cd_BEAVS,BladeWdth,BladeCnt,BladeExtnRate,BEAVSExtnMAX);
 
-%% Plot Results
+% Runge-Kutta (ode45)
+% n = 4;
+% SimName(n) = {'Runge-Kutta'};
+% Cd_rocket = RocketData.DragCoefficient;
+% Cd_BEAVS = 1.10;
+% FeedbackBool = false;
+% [Time(:,n), h(:,n), V(:,n), Cd(:,n)] = RKutta(RocketData, RocketEvent, BEAVSExtn, Cd_rocket, Cd_BEAVS, BladeWdth, BladeCnt);
 
-% PLOT Alt and Vel
+%% Figure 1
+% Apogee and Cd
+
 figure(fig1);
 hold on
-% plot altitudes
-yyaxis left % alt on left
-plot(RocketData.Time,h*3.28084)
+title('BEAVS 4.0 Control Range Graphic');
+xlabel('Time (s)');
+
+% LEFT --------------------------------------------------------------------
+yyaxis left % Altitude
+plot(Time(:,1:n),h*3.28084);
 ylabel('Altitude (ft)');
-lims = [0 max(max(Time)) 0 12000];
-lims(2) = 50;
-axis(lims);
-idx = find(RocketData.Time==RocketEvent.Time(4)); % burnout start time idx
+lims = [0 50 0 12000]; axis(lims);
+
+% Target Apogee Line
+yline(10000,'--','Target Apogee','LabelVerticalAlignment','middle','LabelHorizontalAlignment','right');
+
+% Shade control region
+idx = find(RocketData.Time==BurnoutTime); % burnout start time idx
 fill([Time(idx:end,1)' flip(Time(idx:end,2)')], [h(idx:end,1)' flip(h(idx:end,2)')]*3.28084,...
     [0 0.4470 0.7410], 'FaceAlpha', 0.05, 'EdgeColor', 'none');
-% plot velocity
-yyaxis right % velocity on right
-plot(RocketData.Time,V*3.28084)
-ylabel('Velocity (ft/s)');
-lims = [0 max(max(Time)) 0 1125.33];
-lims(2) = 50;
-axis(lims);
-xlabel('Time (s)');
-xline(RocketEvent.Time(4),'-',{'Motor Cutoff'},'LabelVerticalAlignment','bottom','LabelHorizontalAlignment','left');
-yyaxis left
-yline(10000,'--','Target Apogee','LabelVerticalAlignment','middle','LabelHorizontalAlignment','right');
-legend('OpenRocket','Max Cd BEAVS','Min Cd BEAVS','Location','southeast')
-title('BEAVS 4.0 Control Range Graphic');
+
+% RIGHT -------------------------------------------------------------------
+yyaxis right % Coefficient of Drag
+plot(Time(:,1:n),Cd(:,1:3));
+ylabel('Cd total');
+lims = [0 50 0 1.5]; axis(lims);
+
+% Motor Cutoff and Legend
+xline(BurnoutTime,'-',{'Motor Cutoff'},'LabelVerticalAlignment','bottom','LabelHorizontalAlignment','left');
+legend(SimName,'Location','southeast')
 grid on
 
-% Plot Cd
+%% Figure 2
+% Velocity
+
 figure(fig2);
 hold on
-plot(Time(:,1:2),Cd(:,1:2));
-lims = [0 50 0 1.2];
-axis(lims);
-xline(RocketEvent.Time(4),'-',{'Motor Cutoff'},'LabelVerticalAlignment','bottom','LabelHorizontalAlignment','left');
-xlabel('Time (s)');
-ylabel('Cd total');
 title('Cd over Time');
-legend('w/o BEAVS','w/ BEAVS','Location','SouthEast');
+xlabel('Time (s)');
+
+% Velocity
+plot(Time(:,1:n),V*3.28084);
+ylabel('Velocity (ft/s)');
+lims = [0 50 0 1125.33]; axis(lims);
+
+% Motor Cutoff and Legend
+xline(BurnoutTime,'-',{'Motor Cutoff'},'LabelVerticalAlignment','bottom','LabelHorizontalAlignment','left');
+legend(SimName,'Location','SouthEast');
+grid on
+
+%% Figure 3
+
+figure(fig3);
+hold on
+title('Extension & Desired Extension');
+xlabel('Time (s)');
+
+plot(Time(:,3),[Extn ExtnDesire]*1000);
+lims = [0 25 0 BEAVSExtnMAX*1000]*1.1; axis(lims);
+ylabel('Extension (mm)');
+
+yline(BEAVSExtnMAX*1000,'--','Max Extension');
+legend('Actual Extn','Desired Extn','Location','SouthEast');
 grid on
 
 %% Summary of Simulation
 
-Name = {'OpenRocket','Scaled Cd BEAVS','Unscaled Cd BEAVS'};
+% output summary to cmd window for each simulation
 for i = 1:n
-    Summary(Time(:,i), h(:,i), V(:,i), Cd(:,i), RocketData, Name{:,i})
-end
-
-%% Functions
-
-% Determine how much to scale Cd given Fin Extension
-% Obtained from OpenRocket Data
-% see Cd_Interps.m
-function Cd_total = ScaleCd(Cd_rocket, Cd_i, Ai, Aref)
-    %y = 14.6740.*Extsn + 1;
-    Cd_total = Cd_rocket + Cd_i*(Ai/Aref);
-end
-
-function [Time, h, V, Cd] = FEuler(RocketData, RocketEvent, Extension, Cd_rocket, Cd_BEAVS, BladeWdth, BladeCnt, FeedbackBool)
-  % This function takes OpenRocket Data, BEAVS blade extension, and Cd's
-  % and applies Forward Euler to calculate altitude and velocity over time
-% INPUTS ------------------------------------------------------------------
-    % RocketData   | Table from OpenRocket
-    % RocketEvent  | Table of events from OpenRocket
-    % Extension    | vector containing BEAVS blade extension over the
-    %                OpenRocket Time vector
-    % Cd_rocket    | desired coefficient of drag for the rocket w/o BEAVS
-    %                can be vector w/ respect to OpenRocket Time
-    % Cd_BEAVS     | desired coefficient of drag for BEAVS baldes ALONE
-    %                can be vector w/ respect to OpenRocket Time
-    % FeedbackBool | true - use getfeedback.m
-    %              | false - do not use getfeedback.m
-% OUTPUTS -----------------------------------------------------------------
-    % Time | time vector, the same as OpenRocket time vector, just helpful
-    % h    | altitude vector w/ respect to Time
-    % V    | velocity vector w/ respect to Time
-    % Cd   | calculated Cd vector for reference
-    
-    % if feedback is not used, pre-calculate area vector
-    if FeedbackBool == false
-        % Reference Area
-        A.RefOpen = RocketData.ReferenceArea.*(0.01).^2; % convert to m
-
-        % Calculate BEAVS Area
-        A.BEAVS = Extension.*BladeWdth.*BladeCnt; % calculate BEAVS area
-
-        % Unused
-        %A.Fins = 0.00508*0.10795;
-        %A.Tube = 0.02043;
-        %A.Nacelle = (1.25*2.54)*(1/100)^2;
-        %A.RefBEAVS = A.Tube + A.BEAVS;
-
-        % Calculate Cd TOTAL
-        %Cd = RocketData.DragCoefficient; Cd(isnan(Cd)) = 0;
-        Cd = Cd_rocket + Cd_BEAVS.*(A.BEAVS./A.RefOpen);
-    end
-    
-    % Determine where to begin iteration (start at burnout)
-    BurnoutTime = RocketEvent.Time(4);
-    iterStart = find(RocketData.Time==BurnoutTime); % iteration start time
-    
-    % Allocate vectors for Beavs Data
-    Time           = RocketData.Time;
-    h              = zeros(numel(Time),1);             % total vector
-    h(1:iterStart) = RocketData.Altitude(1:iterStart); % boost phase
-    V              = zeros(numel(Time),1);                     % total vector
-    V(1:iterStart) = RocketData.VerticalVelocity(1:iterStart); % boost phase
-    
-    % constants
-    g = RocketData.GravitationalAcceleration;
-    Rd = 287.058;
-    rho = (RocketData.AirPressure.*100)./Rd./(RocketData.AirTemperature + 273.15);
-    m = RocketData.Mass/1000;
-    T = RocketData.Thrust;
-    
-    for i = iterStart:numel(Time)-1
-        if FeedbackBool == true
-            getfeedback([Time(i) Time(i+1)]);
-        end
-        
-        % Calculate V
-        V(i+1) = V(i) + (...
-                -g(i)...                                               % gravity
-                - 1/2*rho(i)*V(i)*abs(V(i))*Cd(i)*A.RefOpen(i)/m(i)... % drag
-                + V(i)/abs(V(i))*T(i)/m(i)...                          % thrust
-                )*(Time(i+1) - Time(i));
-        % Calculate h
-        h(i+1) = h(i) + V(i)*(Time(i+1) - Time(i));
-    end
-end
-
-function Summary(Time, h, V, Cd, RocketData, Name)
-    h = h*3.28084; V = V*3.28084;
-    RocketData.Altitude = RocketData.Altitude*3.28084;
-    fprintf('\n-----%s-----\n',Name);
-    fprintf('Apogee: %0.0f ft\n',max(h));
-    fprintf('Apogee Difference: %0.0f ft\n',max(RocketData.Altitude)-max(h));
-    fprintf('\n');
-%    fprintf('Max Velocity: %0.0f ft/s\n',max(V));
-%    fprintf('\n');
-    fprintf('Cd_min: %0.2f, Cd_max: %0.2f\n',min(Cd(Cd>0)),max(Cd));
+    Summary(Time(:,i), h(:,i), V(:,i), Cd(:,i), RocketData, RocketEvent, SimName{:,i})
 end
