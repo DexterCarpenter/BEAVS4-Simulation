@@ -1,5 +1,5 @@
 %% FEulerFeedback()
-function [Time, h, V, Cd, Extn, ExtnDesire] = FEulerFeedback(RocketData, RocketEvent, Cd_rocket, Cd_BEAVS, BladeWdth, BladeCnt, BladeExtnRate, BEAVSExtnMAX)
+function [Time, h, V, Cd, Extn, ExtnDesire] = FEulerFeedback(RocketData, RocketEvent, Cd_rocket, BladeWdth, BladeCnt, BladeExtnRate, BEAVSExtnMAX)
   % This function takes OpenRocket Data, BEAVS blade extension, and Cd's
   % and applies Forward Euler to calculate altitude and velocity over time
 % INPUTS ------------------------------------------------------------------
@@ -47,7 +47,7 @@ function [Time, h, V, Cd, Extn, ExtnDesire] = FEulerFeedback(RocketData, RocketE
     Cd = Cd_rocket;
     
     for i = iterStart:numel(Time)-1
-        [Cd(i+1),Extn(i+1),ExtnDesire(i+1)] = GetFeedback([Time(i) Time(i+1)],h(i),V(i),g(i),rho(i),A.RefOpen(i),m(i),a(i),Extn(i),Cd_rocket(i),Cd_BEAVS,BladeWdth,BladeCnt,BladeExtnRate,BEAVSExtnMAX);
+        [Cd(i+1),Extn(i+1),ExtnDesire(i+1)] = GetFeedback([Time(i) Time(i+1)],h(i),V(i),g(i),rho(i),A.RefOpen(i),m(i),a(i),Extn(i),Cd_rocket(i),BladeWdth,BladeCnt,BladeExtnRate,BEAVSExtnMAX);
         
         % Calculate V
         V(i+1) = V(i) + (...

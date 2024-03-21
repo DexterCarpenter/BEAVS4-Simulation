@@ -1,4 +1,4 @@
-function [Cd,Extn,ExtnDesire] = GetFeedback(Time, h0, V0, g, rho, Aref, m, alpha, ExtnCurrent, Cd_rocket, Cd_BEAVS, BladeWdth, BladeCnt, BladeExtnRate, BEAVSExtnMAX)
+function [Cd,Extn,ExtnDesire] = GetFeedback(Time, h0, V0, g, rho, Aref, m, alpha, ExtnCurrent, Cd_rocket, BladeWdth, BladeCnt, BladeExtnRate, BEAVSExtnMAX)
 %% GetFeedback()
 % this function takes the current state of the rocket parameters and
 % calculates how much to increase/decrease the blade extension.
@@ -24,13 +24,15 @@ else
     % write c1 and k as a function of Cd
     k  = @(Cd) rho*Cd*Aref/2/m*sin(alpha);
     c1 = @(Cd) -1/sqrt(g)/sqrt(k(Cd))*atan(V0*sqrt(k(Cd))/sqrt(g));
-
+    
     % use fzero() to determine desired Cd
     Cd_guess = 1;
     Cd_desire = fzero(@(Cd) h0 - 1/k(Cd)*log(cos(sqrt(g)*sqrt(k(Cd))*c1(Cd))) - hTarg, Cd_guess);
-
+    
     % calculate desired area from desired Cd
-    ExtnDesire = (Cd_desire-Cd_rocket)*Aref/Cd_BEAVS/BladeWdth/BladeCnt;
+    % use idea behind InterpCd()
+%     ExtnDesire = (Cd_desire-Cd_rocket)*Aref/Cd_BEAVS/BladeWdth/BladeCnt;
+    ExtnDesire = Aref/BladeWdth/BladeCnt*( (Cd_desire-Cd_rocket)/4.8 )^(2/3);
 end
 
 %% Adjust Blade Extension
@@ -53,7 +55,9 @@ else
 end
 
 % calculate Cd
-Cd = Cd_rocket + Cd_BEAVS*(Extn*BladeWdth*BladeCnt/Aref);
+ABEAVS = Extn*BladeWdth*BladeCnt;
+Cd_BEAVS = InterpCd(ABEAVS,Aref);
+Cd = Cd_rocket + Cd_BEAVS*(ABEAVS/Aref);
 
 end
 

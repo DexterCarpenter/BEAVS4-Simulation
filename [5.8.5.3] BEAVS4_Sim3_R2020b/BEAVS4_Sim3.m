@@ -69,13 +69,6 @@ RocketEvent.Time = str2double(RocketEvent.Time);
 % fill NaN values
 RocketData = fillmissing(RocketData, 'previous');
 
-% Fill Vars with RocketData to start (these values will be used as
-% reference
-Time = RocketData.Time;
-h    = RocketData.Altitude;
-V    = RocketData.VerticalVelocity;
-Cd   = RocketData.DragCoefficient;
-
 %% Additional Script Inputs
 
 BladeWdth = 7*10^-2; % width of BEAVS Blade (convert to meters)
@@ -105,19 +98,26 @@ h    = RocketData.Altitude;
 V    = RocketData.VerticalVelocity;
 Cd   = RocketData.DragCoefficient;
 
+% Include BEAVS, Constant Cd
+% n = 2;
+% SimName(n) = {'Constant Cd'};
+% Cd_rocket = RocketData.DragCoefficient;
+% Cd_BEAVS = 1.10;
+% [Time(:,n), h(:,n), V(:,n), Cd(:,n)] = FEuler(RocketData, RocketEvent, BEAVSExtn, Cd_rocket, Cd_BEAVS, BladeWdth, BladeCnt);
+
 % Include BEAVS, Vary Cd
 n = 2;
 SimName(n) = {'Varying Cd'};
 Cd_rocket = RocketData.DragCoefficient;
-Cd_BEAVS = 1.10;
+Aref = RocketData.ReferenceArea.*(0.01).^2; % convert to m
+Cd_BEAVS = InterpCd(BEAVSExtn.*BladeWdth,Aref);
 [Time(:,n), h(:,n), V(:,n), Cd(:,n)] = FEuler(RocketData, RocketEvent, BEAVSExtn, Cd_rocket, Cd_BEAVS, BladeWdth, BladeCnt);
 
-% Include BEAVS, Feedback
+% Include BEAVS, Feedback & Constant Cd
 n = 3;
 SimName(n) = {'Feedback'};
 Cd_rocket = RocketData.DragCoefficient;
-Cd_BEAVS = 1.10;
-[Time(:,n), h(:,n), V(:,n), Cd(:,n), Extn, ExtnDesire] = FEulerFeedback(RocketData,RocketEvent,Cd_rocket,Cd_BEAVS,BladeWdth,BladeCnt,BladeExtnRate,BEAVSExtnMAX);
+[Time(:,n), h(:,n), V(:,n), Cd(:,n), Extn, ExtnDesire] = FEulerFeedback(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BEAVSExtnMAX);
 
 % Runge-Kutta (ode45)
 % n = 4;
@@ -128,7 +128,7 @@ Cd_BEAVS = 1.10;
 % [Time(:,n), h(:,n), V(:,n), Cd(:,n)] = RKutta(RocketData, RocketEvent, BEAVSExtn, Cd_rocket, Cd_BEAVS, BladeWdth, BladeCnt);
 
 %% Figure 1
-% Apogee and Cd
+% Altitude and Cd
 
 figure(fig1);
 hold on
@@ -151,9 +151,9 @@ fill([Time(idx:end,1)' flip(Time(idx:end,2)')], [h(idx:end,1)' flip(h(idx:end,2)
 
 % RIGHT -------------------------------------------------------------------
 yyaxis right % Coefficient of Drag
-plot(Time(:,1:n),Cd(:,1:3));
+plot(Time(:,1:n),Cd(:,1:n));
 ylabel('Cd total');
-lims = [0 50 0 1.5]; axis(lims);
+lims = [0 50 0 1.8]; axis(lims);
 
 % Motor Cutoff and Legend
 xline(BurnoutTime,'-',{'Motor Cutoff'},'LabelVerticalAlignment','bottom','LabelHorizontalAlignment','left');
