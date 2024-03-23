@@ -2,8 +2,8 @@ function Cd = InterpCd(A_BEAVS,A_ref)
 %% InterpCd()
 
 % slope relationship between a ratio of diameters between a blade and the
-% body
-% a ratio of 1/3 gives a Cd of 0.23
+% rocket body
+% a ratio of 1/3 gives a Cd of 1.6
 % assume a linear relationship
 % information sourced from textbook provided by Dr. Roberto Albertani
 m =  1.6 / (1/3);

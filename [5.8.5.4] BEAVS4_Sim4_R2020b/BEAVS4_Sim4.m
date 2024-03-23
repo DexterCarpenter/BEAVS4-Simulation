@@ -25,6 +25,7 @@ clc
 fig1 = figure(1); figure(fig1); clf
 fig2 = figure(2); figure(fig2); clf
 fig3 = figure(3); figure(fig3); clf
+fig4 = figure(4); figure(fig4); clf
 
 %% Import Data ------------------------------------------------------------
 % OpenRocket Data Export config:
@@ -87,7 +88,7 @@ BladeExtn(1:iterStart) = 0; % no extension in boost phase
 % ramp up BEAVS extension until fully extended at extension rate
 for i = iterStart:numel(BladeExtn)-1
     % if max extension is hit, stop iterating
-    if BladeExtn(i) >= BEAVSExtnMAX; break; end
+    if BladeExtn(i) >= BladeExtnMAX; break; end
     % Extend blades
     BladeExtn(i+1) = BladeExtn(i) + BladeExtnRate*( RocketData.Time(i+1) - RocketData.Time(i) );
 end
@@ -95,35 +96,38 @@ end
 %% SIMULATIONS ------------------------------------------------------------
 % Use Forward Euler to calculate velocity and altitude
 
-% OpenRocket Simulation, No BEAVS
+% various constants
+Cd_rocket = RocketData.DragCoefficient;
+Cd   = RocketData.DragCoefficient;
+hTarg = 10000*0.3048;
+
+% Pure OpenRocket Simulation, No BEAVS
 n = 1;
 SimName(n) = {'OpenRocket'};
 Time = RocketData.Time;
 h    = RocketData.Altitude;
 V    = RocketData.VerticalVelocity;
-Cd   = RocketData.DragCoefficient;
 
-% Include BEAVS, Constant Cd
-% n = 2;
-% SimName(n) = {'Constant Cd'};
-% Cd_rocket = RocketData.DragCoefficient;
-% Cd_BEAVS = 1.10;
-% [Time(:,n), h(:,n), V(:,n), Cd(:,n)] = FEuler(RocketData, RocketEvent, BEAVSExtn, Cd_rocket, Cd_BEAVS, BladeWdth, BladeCnt);
-
-% Include BEAVS, Vary Cd
+% Maximum Braking
 n = 2;
-SimName(n) = {'Varying Cd'};
-Cd_rocket = RocketData.DragCoefficient;
-Aref = RocketData.ReferenceArea.*(0.01).^2; % convert to m
-Cd_BEAVS = InterpCd(BladeExtn.*BladeWdth,Aref);
-%[Time(:,n), h(:,n), V(:,n), Cd(:,n)] = FEuler(RocketData, RocketEvent, BEAVSExtn, Cd_rocket, Cd_BEAVS, BladeWdth, BladeCnt);
-[Time(:,n), h(:,n), V(:,n), Cd(:,n)] = FEuler(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BEAVSExtnMAX,"No Feedback",BladeExtn);
+SimName(n) = {'Maximum Braking'};
+[Time(:,n), h(:,n), V(:,n), Cd(:,n)] = ...
+    FEuler(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BladeExtnMAX,"No Feedback",BladeExtn);
 
-% Include BEAVS, Prediction Feedback & Constant Cd
+% Prediction
 n = 3;
-SimName(n) = {'Feedback'};
-Cd_rocket = RocketData.DragCoefficient;
-[Time(:,n), h(:,n), V(:,n), Cd(:,n), Extn, ExtnDesire] = FEulerFeedback(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BEAVSExtnMAX);
+SimName(n) = {'Prediction'};
+[Time(:,n), h(:,n), V(:,n), Cd(:,n), PredBladeExtn, PredBladeExtnDesire] = ...
+    FEuler(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BladeExtnMAX,"Pred");
+
+% PID
+n = 4;
+SimName(n) = {'PID'};
+Kp = 0.000120;
+Ki = 0.00002;
+Kd = 0.000003;
+[Time(:,n), h(:,n), V(:,n), Cd(:,n), PidBladeExtn, PIDu] = ...
+    FEuler(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BladeExtnMAX,"PID",Kp,Ki,Kd);
 
 %% Figure 1
 % Altitude and Cd
@@ -133,7 +137,7 @@ hold on
 title('BEAVS 4.0 Control Range Graphic');
 xlabel('Time (s)');
 
-% LEFT --------------------------------------------------------------------
+% LEFT AXIS ---------------------------------------------------------------
 yyaxis left % Altitude
 plot(Time(:,1:n),h*3.28084);
 ylabel('Altitude (ft)');
@@ -147,11 +151,11 @@ idx = find(RocketData.Time==BurnoutTime); % burnout start time idx
 fill([Time(idx:end,1)' flip(Time(idx:end,2)')], [h(idx:end,1)' flip(h(idx:end,2)')]*3.28084,...
     [0 0.4470 0.7410], 'FaceAlpha', 0.05, 'EdgeColor', 'none');
 
-% RIGHT -------------------------------------------------------------------
+% RIGHT AXIS --------------------------------------------------------------
 yyaxis right % Coefficient of Drag
 plot(Time(:,1:n),Cd(:,1:n));
 ylabel('Cd total');
-lims = [0 50 0 1.8]; axis(lims);
+lims = [0 50 0 2]; axis(lims);
 
 % Motor Cutoff and Legend
 xline(BurnoutTime,'-',{'Motor Cutoff'},'LabelVerticalAlignment','bottom','LabelHorizontalAlignment','left');
@@ -163,7 +167,7 @@ grid on
 
 figure(fig2);
 hold on
-title('Cd over Time');
+title('Velocity vs. Time');
 xlabel('Time (s)');
 
 % Velocity
@@ -183,11 +187,29 @@ hold on
 title('Extension & Desired Extension');
 xlabel('Time (s)');
 
-plot(Time(:,3),[Extn ExtnDesire]*1000);
-lims = [0 25 0 BEAVSExtnMAX*1000]*1.1; axis(lims);
+plot(Time(:,1),[PredBladeExtn PredBladeExtnDesire]*1000);
+lims = [0 25 0 BladeExtnMAX*1000]*1.1; axis(lims);
 ylabel('Extension (mm)');
 
-yline(BEAVSExtnMAX*1000,'--','Max Extension');
+yline(BladeExtnMAX*1000,'--','Max Extension');
+legend('Actual Extn','Desired Extn','Location','SouthEast');
+grid on
+
+%% Figure 4
+
+figure(fig4)
+hold on
+title('PID Graphic');
+xlabel('Time (s)');
+
+plot(Time(:,1),h(:,4)*3.28084);
+lims = [0 40 0 hTarg*3.28084]*1.5; axis(lims);
+ylabel('Extension (mm)');
+
+% Target Apogee Line
+yline(10000,'--','Target Apogee','LabelVerticalAlignment','middle','LabelHorizontalAlignment','right');
+
+%yline(BladeExtnMAX*1000,'--','Max Extension');
 legend('Actual Extn','Desired Extn','Location','SouthEast');
 grid on
 

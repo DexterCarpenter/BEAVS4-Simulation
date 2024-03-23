@@ -1,5 +1,5 @@
-function [Cd,BladeExtn,BladeExtnDesire] = GetFeedbackPred(Time, h0, V0, g, rho, A_ref, m, alpha, BladeExtnCurrent, Cd_rocket, BladeWdth, BladeCnt, BladeExtnRate, BEAVSExtnMAX)
 %% GetFeedback()
+function [Cd,BladeExtn,BladeExtnDesire] = GetFeedbackPred(Time, h0, V0, g, rho, A_ref, m, alpha, BladeExtnCurrent, Cd_rocket, BladeWdth, BladeCnt, BladeExtnRate, BEAVSExtnMAX)
 % this function takes the current state of the rocket parameters and
 % calculates how much to increase/decrease the blade extension.
 % INPUTS ------------------------------------------------------------------
@@ -10,12 +10,12 @@ function [Cd,BladeExtn,BladeExtnDesire] = GetFeedbackPred(Time, h0, V0, g, rho, 
 
 %% Constants
 
-hTarg = 10000*0.3048; % 10k ft Target Apogee covert to meters
+hTarg = 10000*0.3048; % 10k ft Target Apogee convert to meters
 
-%% Desired Blade Extension
+%% Find Desired Blade Extension
 % use fzero() to obtain a desired Cd
 
-% if initial altitude is within 99% of target altitude
+% if initial altitude is within 90% of target altitude
 % or vertical velocity is negative (in descent)
 if (h0/hTarg >= 0.90) || (V0 < 0)
     % retract beavs
@@ -54,15 +54,10 @@ else
     BladeExtn = BladeExtnDesire;
 end
 
-% calculate Cd
+%% Calculate Cd
+
 A_BEAVS = BladeExtn*BladeWdth*BladeCnt;
 Cd_BEAVS = InterpCd(A_BEAVS,A_ref);
 Cd = Cd_rocket + Cd_BEAVS*(A_BEAVS/A_ref);
 
 end
-
-% function [Cd,Extn,ExtnDesire] = FEulerFeedback(Time, h0, V0, g, rho, Aref, m, alpha, ExtnCurrent, Cd_rocket, BladeWdth, BladeCnt, BladeExtnRate, BEAVSExtnMAX, Kp, Ki, Kd)
-% %% FEulerFeedback(..., PID Constants)
-%     fprintf('Hello World');
-%     
-% end
