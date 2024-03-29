@@ -46,20 +46,29 @@ fig4 = figure(4); figure(fig4); clf
     % Comment Character > #
 
 % Get OpenRocket Data
-disp('You can Press ENTER to select default data');
+fprintf('You can Press ENTER to select default data\n');
+fprintf('You can enter "1" to select data set 1\n');
+fprintf('Example: SomeWildRocketData.csv\n');
 RocketData_file = input('Rocket Data File Name: ',"s");
-if isempty(RocketData_file) == true; RocketData_file = 'RocketDataDefault.csv'; fprintf('Default Selected\n'); end
+if isempty(RocketData_file) == true % SELECT DEFAULT DATA SET
+    RocketData_file = 'RocketDataDefault.csv'; fprintf('Default Selected\n');
+    RocketEvent_file = 'RocketEventDefault.csv'; fprintf('Rocket Event File Name: \nDefault Selected\n');
+elseif RocketData_file == "1" % SELECT FIRST DATA SET
+    RocketData_file = 'RocketDataSet1.csv'; fprintf('Data Set 1 Selected\n');
+    RocketEvent_file = 'RocketEventSet1.csv'; fprintf('Rocket Event File Name: \nData Set 1 Selected\n');
+else % CUSTOM DATA SET
+    RocketEvent_file = input('Rocket Event File Name: ',"s");
+end
+
+% Extract Rocket DATA
 RocketData = readtable(RocketData_file,'VariableNamingRule','preserve'); clear RocketData_file
 
 % Set Table Variable Names from csv
 RocketVarNames = readtable('RocketVarNames.csv','VariableNamingRule','preserve');
 RocketData.Properties.VariableNames = RocketVarNames.Properties.VariableNames;
 
-% Get OpenRocket Event Data
-RocketEvent_file = input('Rocket Event File Name: ',"s");
-if isempty(RocketEvent_file) == true; RocketEvent_file = 'RocketEventDefault.csv'; fprintf('Default Selected\n'); end
+% Extract Rocket EVENTS
 RocketEvent = readtable(RocketEvent_file,'VariableNamingRule','preserve'); clear RocketEvent_file
-% Extract values from event data
 RocketEvent.Properties.VariableNames = {'Var1','Var2','Name','Var4','Var5','Time','Var7'};
 RocketEvent.Time = convertCharsToStrings(RocketEvent.Time);
 for i = 1:numel(RocketEvent.Time)
@@ -67,7 +76,7 @@ for i = 1:numel(RocketEvent.Time)
 end
 RocketEvent.Time = str2double(RocketEvent.Time);
 
-% fill NaN values with previous
+% fill NaN values with previous value
 RocketData = fillmissing(RocketData, 'previous');
 
 %% Additional Script Inputs -----------------------------------------------
@@ -123,9 +132,9 @@ SimName(n) = {'Prediction'};
 % PID
 n = 4;
 SimName(n) = {'PID'};
-Kp = 0.000120;
-Ki = 0.00002;
-Kd = 0.000003;
+Kp = 0.000090; % Kp = 0.000120;
+Ki = 0.000017; % Ki = 0.000020;
+Kd = 0.000100; % Kd = 0.000003;
 [Time(:,n), h(:,n), V(:,n), Cd(:,n), PidBladeExtn, PIDu] = ...
     FEuler(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BladeExtnMAX,"PID",Kp,Ki,Kd);
 
