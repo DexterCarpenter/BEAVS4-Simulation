@@ -21,6 +21,13 @@ m = RocketData.Mass/1000; % convert to kg
 A_ref = RocketData.ReferenceArea.*(0.01).^2; % convert to m2
 a = deg2rad(RocketData.VerticalOrientation); % NOT ANGLE OF ATTACK!!! (rad)
 
+% For Solving SolveFdrag()
+ma = 12.711; % kg
+mb =  7.517; % kg
+% allocate
+Fb = zeros(numel(Time),1);
+Fn = zeros(numel(Time),1);
+
 %% NO FEEDBACK ------------------------------------------------------------
 % Use given blade extension
 % FEuler(...,"No Feedback",BladeExtn)
@@ -43,7 +50,12 @@ if Method == "No Feedback"
     % Iterate Forward Euler
     for i = iterStart:numel(Time)-1   
         [h(i+1), V(i+1)] = StepFEuler([Time(i) Time(i+1)], h(i), V(i), g(i), rho(i), Cd(i), A_ref(i), m(i));
+        [Fb(i),Fn(i)] = SolveFdrag(ma,mb,RocketData.TotalAcceleration(i),g(i),RocketData.DragForce(i));
     end
+    
+    varargout{1} = Fb;
+    varargout{2} = Fn;
+    
     return
 end
 
@@ -80,7 +92,6 @@ if Method == "Pred" || Method == "Predict"
 end
 
 
-
 %% PID Feedback -----------------------------------------------------------
 % use PID loop to control blade extension
 % FEuler(...,"PID",Kp,Ki,Kd)
@@ -106,11 +117,16 @@ if Method == "PID"
         
         % Step FEuler
         [h(i+1), V(i+1)] = StepFEuler([Time(i) Time(i+1)], h(i), V(i), g(i), rho(i), Cd(i), A_ref(i), m(i));
+        
+        % Calculate forces
+%         [Fb(i),Fn(i)] = SolveFdrag(ma,mb,RocketData.TotalAcceleration(i),g(i),RocketData.DragForce(i));
     end
     
     % Resolve varargout
     varargout{1} = BladeExtn;
     varargout{2} = u;
+%     varargout{3} = Fb;
+%     varargout{4} = Fn;
     
     return
 end
@@ -122,11 +138,14 @@ fprintf('\n ERROR in FEuler\n\nMethod "%s" is not recognized by FEuler\n',Method
 end
 
 %% StepEuler()
-function [h, V] = StepFEuler(Time, h, V, g, rho, Cd, A_ref, m)
+function [hout, Vout] = StepFEuler(Time, h, V, g, rho, Cd, A_ref, m)
 % Calculate V
-V = V + (-g - 1/2*rho*V*abs(V)*Cd*A_ref/m)*(Time(2) - Time(1));
+Vout = V + (-g - 1/2*rho*V*abs(V)*Cd*A_ref/m)*(Time(2) - Time(1));
 % Calculate h
-h = h + V*(Time(2) - Time(1));
+hout = h + V*(Time(2) - Time(1));
+
+Vout = Noise([V Vout],0);
+hout = Noise([h hout],0);
 end
 
 

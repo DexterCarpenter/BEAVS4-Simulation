@@ -26,6 +26,7 @@ fig1 = figure(1); figure(fig1); clf
 fig2 = figure(2); figure(fig2); clf
 fig3 = figure(3); figure(fig3); clf
 fig4 = figure(4); figure(fig4); clf
+fig5 = figure(5); figure(fig5); clf
 
 %% Import Data ------------------------------------------------------------
 % OpenRocket Data Export config:
@@ -109,6 +110,8 @@ end
 Cd_rocket = RocketData.DragCoefficient;
 Cd   = RocketData.DragCoefficient;
 hTarg = 10000*0.3048;
+A_ref = RocketData.ReferenceArea(1).*(0.01).^2; % convert to m2
+rho = (RocketData.AirPressure.*100)./287.058./(RocketData.AirTemperature + 273.15); % convert to kg/m3rho = 
 
 % Pure OpenRocket Simulation, No BEAVS
 n = 1;
@@ -120,8 +123,10 @@ V    = RocketData.VerticalVelocity;
 % Maximum Braking
 n = 2;
 SimName(n) = {'Maximum Braking'};
-[Time(:,n), h(:,n), V(:,n), Cd(:,n)] = ...
+[Time(:,n), h(:,n), V(:,n), Cd(:,n), Fb(:,n), Fn(:,n)] = ...
     FEuler(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BladeExtnMAX,"No Feedback",BladeExtn);
+Fb(700:end,:) = 0;
+Fn(700:end,:) = 0;
 
 % Prediction
 n = 3;
@@ -132,9 +137,9 @@ SimName(n) = {'Prediction'};
 % PID
 n = 4;
 SimName(n) = {'PID'};
-Kp = 0.000090; % Kp = 0.000120;
-Ki = 0.000017; % Ki = 0.000020;
-Kd = 0.000100; % Kd = 0.000003;
+Kp = 0.0000900; % Kp = 0.0000900; % Kp = 0.000120;
+Ki = 0.0000100; % Ki = 0.0000175; % Ki = 0.000020;
+Kd = 0.0004300; % Kd = 0.0000150; % Kd = 0.000003;
 [Time(:,n), h(:,n), V(:,n), Cd(:,n), PidBladeExtn, PIDu] = ...
     FEuler(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BladeExtnMAX,"PID",Kp,Ki,Kd);
 
@@ -222,9 +227,32 @@ yline(10000,'--','Target Apogee','LabelVerticalAlignment','middle','LabelHorizon
 legend('Actual Extn','Desired Extn','Location','SouthEast');
 grid on
 
+
+%% Figure 5
+
+figure(fig5);
+hold on
+
+title('Forces During Coast Phase');
+xlabel('Time (s)');
+
+plot(Time(:,1),abs(Fb(:,2))); % Force on singular BEAVS blade
+plot(Time(:,1),abs(Fn(:,2))); % Force on coupler
+lims = [0 200 0 2000]; axis(lims);
+ylabel('Force (N)');
+
+% Motor Cutoff and Legend
+xline(BurnoutTime,'-',{'Motor Cutoff'},'LabelVerticalAlignment','bottom','LabelHorizontalAlignment','left');
+legend({'Blade Force', 'Coupler Force'},'Location','NorthEast');
+grid on
+
+BladeExtnALLOW = InterpCdInverse(2.*abs(Fb(:,2))./rho./A_ref./(V(:,2).^2),A_ref)./BladeWdth.*1000; % convert to mm
+
 %% Summary of Simulation
 
 % output summary to cmd window for each simulation
 for i = 1:n
     Summary(Time(:,i), h(:,i), V(:,i), Cd(:,i), RocketData, RocketEvent, SimName{:,i})
 end
+
+max(BladeExtnALLOW)
