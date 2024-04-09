@@ -238,7 +238,7 @@ xlabel('Time (s)');
 
 plot(Time(:,1),abs(Fb(:,2))); % Force on singular BEAVS blade
 plot(Time(:,1),abs(Fn(:,2))); % Force on coupler
-lims = [0 200 0 2000]; axis(lims);
+lims = [0 40 0 2000]; axis(lims);
 ylabel('Force (N)');
 
 % Motor Cutoff and Legend
@@ -256,3 +256,4 @@ for i = 1:n
 end
 
 max(BladeExtnALLOW)
+

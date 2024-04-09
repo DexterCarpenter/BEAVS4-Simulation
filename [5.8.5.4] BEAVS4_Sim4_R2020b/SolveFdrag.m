@@ -16,8 +16,8 @@ FgA = ma*g;
 FgB = mb*g;
 
 % setup matrix
-M = [ 0   1 Fnet+Fd+FgA;...
-     -2 -1  Fnet+FgB   ];
+M = [ 0 -1 Fnet+Fd+FgA;...
+     -2  1  Fnet+FgB   ];
 
  % sovle system
 F = rref(M);
