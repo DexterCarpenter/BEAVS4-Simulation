@@ -27,8 +27,9 @@ fig2 = figure(2); figure(fig2); clf
 fig3 = figure(3); figure(fig3); clf
 fig4 = figure(4); figure(fig4); clf
 fig5 = figure(5); figure(fig5); clf
+fig6 = figure(6); figure(fig6); clf
 
-%% Import Data ------------------------------------------------------------
+%% Import Simulation Data -------------------------------------------------
 % OpenRocket Data Export config:
     % Must go Edit > Preferences > Units > Default Metric > Ok
     % Select All Variables
@@ -51,12 +52,15 @@ fprintf('You can Press ENTER to select default data\n');
 fprintf('You can enter "1" to select data set 1\n');
 fprintf('Example: SomeWildRocketData.csv\n');
 RocketData_file = input('Rocket Data File Name: ',"s");
-if isempty(RocketData_file) == true % SELECT DEFAULT DATA SET
-    RocketData_file = 'RocketDataDefault.csv'; fprintf('Default Selected\n');
-    RocketEvent_file = 'RocketEventDefault.csv'; fprintf('Rocket Event File Name: \nDefault Selected\n');
+if (isempty(RocketData_file) == true) || RocketData_file == "0" % SELECT DEFAULT DATA SET
+    RocketData_file = 'RocketDataSet0.csv'; fprintf('Default Selected\n');
+    RocketEvent_file = 'RocketEventSet0.csv'; fprintf('Rocket Event File Name: \nDefault Selected\n');
 elseif RocketData_file == "1" % SELECT FIRST DATA SET
     RocketData_file = 'RocketDataSet1.csv'; fprintf('Data Set 1 Selected\n');
     RocketEvent_file = 'RocketEventSet1.csv'; fprintf('Rocket Event File Name: \nData Set 1 Selected\n');
+elseif RocketData_file == "2" % SELECT APRIL BROTHERS DATA SET
+    RocketData_file = 'RocketDataSet2.csv'; fprintf('Data Set 2 Selected (April Brothers Set)\n');
+    RocketEvent_file = 'RocketEventSet2.csv'; fprintf('Rocket Event File Name: \nData Set 2 Selected (April Brothers Set)\n');
 else % CUSTOM DATA SET
     RocketEvent_file = input('Rocket Event File Name: ',"s");
 end
@@ -79,6 +83,39 @@ RocketEvent.Time = str2double(RocketEvent.Time);
 
 % fill NaN values with previous value
 RocketData = fillmissing(RocketData, 'previous');
+
+%% Import Actual Data -----------------------------------------------------
+
+% Import data from April Brothers 2024 Launch
+AprilBrothers1 = readtable("April_Brothers_TeleMetrum_11445.csv",'VariableNamingRule','preserve'); % TeleMetrum 1
+AprilBrothers2 = readtable("April_Brothers_TeleMetrum_11439.csv",'VariableNamingRule','preserve'); % TeleMetrum 2
+
+% Find Motor Cutoff
+AprilBrothersCoastTable1 = AprilBrothers1(:,[5 7 11 12]); % extract height, time, speed
+coastRows = strcmp(AprilBrothers1.state_name, 'coast') == 0; % logical array for not 'coast'
+AprilBrothersCoastTable1(coastRows,:) = []; % delete non-coast rows
+AprilBrothersCutoff1 = AprilBrothersCoastTable1.time(1); % extract time of cutoff
+
+AprilBrothersCoastTable2 = AprilBrothers2(:,[5 9 13 14]); % extract height, time, speed
+coastRows = strcmp(AprilBrothers2.state_name, 'coast') == 0; % logical array for not 'coast'
+AprilBrothersCoastTable2(coastRows,:) = []; % delete non-coast rows
+AprilBrothersCutoff2 = AprilBrothersCoastTable2.time(1); % extract time of cutoff
+
+% Remove repeated values
+[~,ia] = unique(AprilBrothersCoastTable1.height);
+LookupTable1 = AprilBrothersCoastTable1(ia,:);
+[~,ia] = unique(AprilBrothersCoastTable2.height);
+LookupTable2 = AprilBrothersCoastTable1(ia,:);
+
+% Create Lookup Table
+LookupRes = 0.01;
+VelLookup(:,2) = (0:LookupRes:max(LookupTable1.speed*1.05))';
+
+VelLookup(:,1) = polyval(    polyfit(LookupTable1.speed,LookupTable1.height,5) , VelLookup(:,2)    );
+
+hold on; grid on
+plot(VelLookup(:,2),VelLookup(:,1))
+plot(LookupTable1.speed,LookupTable1.height)
 
 %% Additional Script Inputs -----------------------------------------------
 
@@ -106,6 +143,10 @@ end
 %% SIMULATIONS ------------------------------------------------------------
 % Use Forward Euler to calculate velocity and altitude
 
+% OPTIONS
+% degree of noise to use in simulations
+NoiseDeg = 10;
+
 % various constants
 Cd_rocket = RocketData.DragCoefficient;
 Cd   = RocketData.DragCoefficient;
@@ -121,27 +162,27 @@ h    = RocketData.Altitude;
 V    = RocketData.VerticalVelocity;
 
 % Maximum Braking
-n = 2;
+n = n+1;
 SimName(n) = {'Maximum Braking'};
 [Time(:,n), h(:,n), V(:,n), Cd(:,n), Fb(:,n), Fn(:,n)] = ...
-    FEuler(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BladeExtnMAX,"No Feedback",BladeExtn);
+    FEuler(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BladeExtnMAX,NoiseDeg,"No Feedback",BladeExtn);
 Fb(700:end,:) = 0;
 Fn(700:end,:) = 0;
 
 % Prediction
-n = 3;
+n = n+1;
 SimName(n) = {'Prediction'};
 [Time(:,n), h(:,n), V(:,n), Cd(:,n), PredBladeExtn, PredBladeExtnDesire] = ...
-    FEuler(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BladeExtnMAX,"Pred");
+    FEuler(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BladeExtnMAX,NoiseDeg,"Pred");
 
 % PID
-n = 4;
+n = n+1;
 SimName(n) = {'PID'};
-Kp = 0.0000900; % Kp = 0.0000900; % Kp = 0.000120;
-Ki = 0.0000100; % Ki = 0.0000175; % Ki = 0.000020;
-Kd = 0.0004300; % Kd = 0.0000150; % Kd = 0.000003;
+Kp = 0.0000004; % Kp = 0.0000900; % Kp = 0.000120;
+Ki = 0.0000005; % Ki = 0.0000175; % Ki = 0.000020;
+Kd = 0.0000000; % Kd = 0.0000150; % Kd = 0.000003;
 [Time(:,n), h(:,n), V(:,n), Cd(:,n), PidBladeExtn, PIDu] = ...
-    FEuler(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BladeExtnMAX,"PID",Kp,Ki,Kd);
+    FEuler(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BladeExtnMAX,NoiseDeg,"PID",VelLookup,Kp,Ki,Kd);
 
 %% Figure 1
 % Altitude and Cd
@@ -248,6 +289,44 @@ grid on
 
 BladeExtnALLOW = InterpCdInverse(2.*abs(Fb(:,2))./rho./A_ref./(V(:,2).^2),A_ref)./BladeWdth.*1000; % convert to mm
 
+%% Figure 6
+
+% Plot
+figure(fig6);
+hold on
+
+title('Compare to Real');
+xlabel('Time (s)');
+
+% LEFT AXIS -----------------------------------------------------------
+yyaxis left % Altitude
+plot(Time, h*3.281);
+plot(AprilBrothers1.time, AprilBrothers1.height*3.281,'-','LineWidth',2);
+plot(AprilBrothers2.time, AprilBrothers2.height*3.281,'--','LineWidth',2);
+
+ylabel('Altitude (ft)');
+lims = [0 50 0 12000]; axis(lims);
+
+% Target Apogee Line
+yline(10000,'--','Target Apogee','LabelVerticalAlignment','middle','LabelHorizontalAlignment','right');
+
+% Motor Cutoff and Legend
+xline(BurnoutTime,'-',{'Sim Motor Cutoff'},'LabelVerticalAlignment','bottom','LabelHorizontalAlignment','right');
+xline(mean([AprilBrothersCutoff1 AprilBrothersCutoff2]),'-',{'Real Motor Cutoff'},'LabelVerticalAlignment','bottom','LabelHorizontalAlignment','left');
+
+grid on
+
+% LEFT AXIS -----------------------------------------------------------
+yyaxis right % Velocity
+plot(Time, V*3.281);
+plot(AprilBrothers1.time, AprilBrothers1.speed*3.281,'-','LineWidth',2);
+plot(AprilBrothers2.time, AprilBrothers2.speed*3.281,'--','LineWidth',2);
+
+ylabel('Velocity (ft/s)');
+lims = [0 50 -1000 1500]; axis(lims);
+
+legend([SimName, 'April Brothers 1', 'April Brothers 2'],'Location','SouthEast');
+
 %% Summary of Simulation
 
 % output summary to cmd window for each simulation
@@ -255,5 +334,4 @@ for i = 1:n
     Summary(Time(:,i), h(:,i), V(:,i), Cd(:,i), RocketData, RocketEvent, SimName{:,i})
 end
 
-max(BladeExtnALLOW)
-
+figure(fig1);

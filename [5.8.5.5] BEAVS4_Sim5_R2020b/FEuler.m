@@ -1,5 +1,5 @@
 %% FEuler()
-function [Time, h, V, Cd, varargout] = FEuler(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BladeExtnMAX,Method,varargin)
+function [Time, h, V, Cd, varargout] = FEuler(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BladeExtnMAX,NoiseDeg,Method,varargin)
 %% Universal
 % the following variables are used by each Method
 
@@ -49,7 +49,7 @@ if Method == "No Feedback"
     
     % Iterate Forward Euler
     for i = iterStart:numel(Time)-1   
-        [h(i+1), V(i+1)] = StepFEuler([Time(i) Time(i+1)], h(i), V(i), g(i), rho(i), Cd(i), A_ref(i), m(i));
+        [h(i+1), V(i+1)] = StepFEuler([Time(i) Time(i+1)], h(i), V(i), g(i), rho(i), Cd(i), A_ref(i), m(i), NoiseDeg);
         [Fb(i),Fn(i)] = SolveFdrag(ma,mb,RocketData.TotalAcceleration(i),g(i),RocketData.DragForce(i));
     end
     
@@ -81,7 +81,7 @@ if Method == "Pred" || Method == "Predict"
         [Cd(i+1),BladeExtn(i+1),BladeExtnDesire(i+1)] = ...
             GetFeedbackPred([Time(i) Time(i+1)],h(i),V(i),g(i),rho(i),A_ref(i),m(i),a(i),BladeExtn(i),Cd_rocket(i),BladeWdth,BladeCnt,BladeExtnRate,BladeExtnMAX);
         % Step FEuler
-        [h(i+1), V(i+1)] = StepFEuler([Time(i) Time(i+1)], h(i), V(i), g(i), rho(i), Cd(i), A_ref(i), m(i));
+        [h(i+1), V(i+1)] = StepFEuler([Time(i) Time(i+1)], h(i), V(i), g(i), rho(i), Cd(i), A_ref(i), m(i), NoiseDeg);
     end
     
     % Resolve varargout
@@ -94,13 +94,14 @@ end
 
 %% PID Feedback -----------------------------------------------------------
 % use PID loop to control blade extension
-% FEuler(...,"PID",Kp,Ki,Kd)
+% FEuler(...,"PID",VelLookup,Kp,Ki,Kd)
 
 if Method == "PID"
     % Resolve varargin
-    Kp = varargin{1};
-    Ki = varargin{2};
-    Kd = varargin{3};
+    VelLookup = varargin{1};
+    Kp = varargin{2};
+    Ki = varargin{3};
+    Kd = varargin{4};
     
     % Define Variables
     BladeExtn = zeros(numel(Time),1);
@@ -109,14 +110,22 @@ if Method == "PID"
     
     % Iterate Forward Euler
     for i = iterStart:numel(Time)-1
-        % Update PID Control Function
-        u(i) = GetFeedbackPID([Time(i) Time(i+1)], Kp, Ki, Kd, u(i-1), [h(i-2) h(i-1) h(i)]);
+        
+        % Get new Target
+        Vtarg = interp1(VelLookup(:,1), VelLookup(:,2), h(i));
+        if isnan(Vtarg) == false
+            % Update PID Control Function
+            u(i) = GetFeedbackPID([Time(i) Time(i+1)], Kp, Ki, Kd, u(i-1), V, Vtarg);
+        else
+            % Else set control function to zero (no extension)
+            u(i) = 0;
+        end
         
         % Adjust Blade Extension
         [Cd(i+1),BladeExtn(i+1)] = UpdateExtension([Time(i) Time(i+1)], A_ref(i), Cd_rocket(i), BladeExtn(i), BladeWdth, BladeCnt, BladeExtnRate, BladeExtnMAX, u(i));
         
         % Step FEuler
-        [h(i+1), V(i+1)] = StepFEuler([Time(i) Time(i+1)], h(i), V(i), g(i), rho(i), Cd(i), A_ref(i), m(i));
+        [h(i+1), V(i+1)] = StepFEuler([Time(i) Time(i+1)], h(i), V(i), g(i), rho(i), Cd(i), A_ref(i), m(i), NoiseDeg);
         
         % Calculate forces
 %         [Fb(i),Fn(i)] = SolveFdrag(ma,mb,RocketData.TotalAcceleration(i),g(i),RocketData.DragForce(i));
@@ -138,14 +147,14 @@ fprintf('\n ERROR in FEuler\n\nMethod "%s" is not recognized by FEuler\n',Method
 end
 
 %% StepEuler()
-function [hout, Vout] = StepFEuler(Time, h, V, g, rho, Cd, A_ref, m)
+function [hout, Vout] = StepFEuler(Time, h, V, g, rho, Cd, A_ref, m, NoiseDeg)
 % Calculate V
 Vout = V + (-g - 1/2*rho*V*abs(V)*Cd*A_ref/m)*(Time(2) - Time(1));
 % Calculate h
 hout = h + V*(Time(2) - Time(1));
 
-Vout = Noise([V Vout],0);
-hout = Noise([h hout],0);
+Vout = Noise([V Vout],NoiseDeg);
+hout = Noise([h hout],NoiseDeg);
 end
 
 
