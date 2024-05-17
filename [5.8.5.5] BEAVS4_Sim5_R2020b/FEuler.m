@@ -107,15 +107,18 @@ if Method == "PID"
     BladeExtn = zeros(numel(Time),1);
     Cd        = Cd_rocket;
     u         = zeros(numel(Time),1);
+    err       = zeros(numel(Time),1);
+    Vtarg     = zeros(numel(Time),1);
     
     % Iterate Forward Euler
     for i = iterStart:numel(Time)-1
         
         % Get new Target
-        Vtarg = interp1(VelLookup(:,1), VelLookup(:,2), h(i));
-        if isnan(Vtarg) == false
+        Vtarg(i) = interp1(VelLookup(:,1), VelLookup(:,2), h(i));
+        %Vtarg(i) = 1; % overwrite to step response
+        if isnan(Vtarg(i)) == false
             % Update PID Control Function
-            u(i) = GetFeedbackPID([Time(i) Time(i+1)], Kp, Ki, Kd, u(i-1), V, Vtarg);
+            [u(i), err(i)] = GetFeedbackPID([Time(i) Time(i+1)], Kp, Ki, Kd, u(i-1), [V(i-2) V(i-1) V(i)], Vtarg(i));
         else
             % Else set control function to zero (no extension)
             u(i) = 0;
@@ -134,6 +137,8 @@ if Method == "PID"
     % Resolve varargout
     varargout{1} = BladeExtn;
     varargout{2} = u;
+    varargout{3} = err;
+    varargout{4} = Vtarg;
 %     varargout{3} = Fb;
 %     varargout{4} = Fn;
     

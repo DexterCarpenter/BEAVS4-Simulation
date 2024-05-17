@@ -107,15 +107,18 @@ LookupTable1 = AprilBrothersCoastTable1(ia,:);
 [~,ia] = unique(AprilBrothersCoastTable2.height);
 LookupTable2 = AprilBrothersCoastTable1(ia,:);
 
-% Create Lookup Table
+% Create Velocity Lookup Table
+% velocity lookup table gives the PID a target velocity to achieve based
+% upon a given altitude. the idea is to have the PID system control the
+% velocity instead of a height. Version 4 used a target altitude of
+% 10,000ft instead of a velocity lookup table
 LookupRes = 0.01;
 VelLookup(:,2) = (0:LookupRes:max(LookupTable1.speed*1.05))';
-
 VelLookup(:,1) = polyval(    polyfit(LookupTable1.speed,LookupTable1.height,5) , VelLookup(:,2)    );
 
-hold on; grid on
-plot(VelLookup(:,2),VelLookup(:,1))
-plot(LookupTable1.speed,LookupTable1.height)
+% hold on; grid on
+% plot(VelLookup(:,2),VelLookup(:,1))
+% plot(LookupTable1.speed,LookupTable1.height)
 
 %% Additional Script Inputs -----------------------------------------------
 
@@ -140,12 +143,14 @@ for i = iterStart:numel(BladeExtn)-1
     BladeExtn(i+1) = BladeExtn(i) + BladeExtnRate*( RocketData.Time(i+1) - RocketData.Time(i) );
 end
 
+% NOISE
+% degree of noise to use in simulations
+% 0-100 corrolating to a percent
+% see Noise.m
+NoiseDeg = 0;
+
 %% SIMULATIONS ------------------------------------------------------------
 % Use Forward Euler to calculate velocity and altitude
-
-% OPTIONS
-% degree of noise to use in simulations
-NoiseDeg = 10;
 
 % various constants
 Cd_rocket = RocketData.DragCoefficient;
@@ -178,10 +183,10 @@ SimName(n) = {'Prediction'};
 % PID
 n = n+1;
 SimName(n) = {'PID'};
-Kp = 0.0000004; % Kp = 0.0000900; % Kp = 0.000120;
-Ki = 0.0000005; % Ki = 0.0000175; % Ki = 0.000020;
-Kd = 0.0000000; % Kd = 0.0000150; % Kd = 0.000003;
-[Time(:,n), h(:,n), V(:,n), Cd(:,n), PidBladeExtn, PIDu] = ...
+Kp = 1.200e-04; % Kp = 1.320e-04;
+Ki = 1.000e-09; % Ki = 1.000e-07;
+Kd = 6.500e-05; % Kd = 1.004e-06;
+[Time(:,n), h(:,n), V(:,n), Cd(:,n), PidBladeExtn, PIDu, err, Vtarg] = ...
     FEuler(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BladeExtnMAX,NoiseDeg,"PID",VelLookup,Kp,Ki,Kd);
 
 %% Figure 1
@@ -257,17 +262,20 @@ hold on
 title('PID Graphic');
 xlabel('Time (s)');
 
-plot(Time(:,1),h(:,4)*3.28084);
-lims = [0 40 0 hTarg*3.28084]*1.5; axis(lims);
-ylabel('Extension (mm)');
+plot(Time(:,1),[Vtarg V(:,4) err]);
+lims = [0 30 -50 300]; axis(lims);
+ylabel('Error (m/s)');
 
-% Target Apogee Line
-yline(10000,'--','Target Apogee','LabelVerticalAlignment','middle','LabelHorizontalAlignment','right');
+TimeTrgtRched = Time(h(:,4)>=3048,4);
+if isempty(TimeTrgtRched)
+    TimeTrgtRched = Time(h(:,4)==max(h(:,4)),4);
+else
+    TimeTrgtRched = TimeTrgtRched(1);
+end
+xline(TimeTrgtRched,'--',num2str(max(h(:,4))*3.281),'LabelHorizontalAlignment','left');
 
-%yline(BladeExtnMAX*1000,'--','Max Extension');
-legend('Actual Extn','Desired Extn','Location','SouthEast');
+legend('Target','Actual','Error','Location','NorthEast');
 grid on
-
 
 %% Figure 5
 
@@ -334,4 +342,4 @@ for i = 1:n
     Summary(Time(:,i), h(:,i), V(:,i), Cd(:,i), RocketData, RocketEvent, SimName{:,i})
 end
 
-figure(fig1);
+figure(fig4);
