@@ -28,6 +28,7 @@ fig3 = figure(3); figure(fig3); clf
 fig4 = figure(4); figure(fig4); clf
 fig5 = figure(5); figure(fig5); clf
 fig6 = figure(6); figure(fig6); clf
+fig7 = figure(7); figure(fig7); clf
 
 %% Import Simulation Data -------------------------------------------------
 % OpenRocket Data Export config:
@@ -86,6 +87,9 @@ RocketData = fillmissing(RocketData, 'previous');
 
 %% Import Actual Data -----------------------------------------------------
 
+% There were two flight computers in flight for the launch: 11445 and 11439
+% which will be reffered to as "1" and "2" respectively. 
+
 % Import data from April Brothers 2024 Launch
 AprilBrothers1 = readtable("April_Brothers_TeleMetrum_11445.csv",'VariableNamingRule','preserve'); % TeleMetrum 1
 AprilBrothers2 = readtable("April_Brothers_TeleMetrum_11439.csv",'VariableNamingRule','preserve'); % TeleMetrum 2
@@ -105,7 +109,7 @@ AprilBrothersCutoff2 = AprilBrothersCoastTable2.time(1); % extract time of cutof
 [~,ia] = unique(AprilBrothersCoastTable1.height);
 LookupTable1 = AprilBrothersCoastTable1(ia,:);
 [~,ia] = unique(AprilBrothersCoastTable2.height);
-LookupTable2 = AprilBrothersCoastTable1(ia,:);
+LookupTable2 = AprilBrothersCoastTable2(ia,:);
 
 % Create Velocity Lookup Table
 % velocity lookup table gives the PID a target velocity to achieve based
@@ -116,9 +120,11 @@ LookupRes = 0.01;
 VelLookup(:,2) = (0:LookupRes:max(LookupTable1.speed*1.05))';
 VelLookup(:,1) = polyval(    polyfit(LookupTable1.speed,LookupTable1.height,5) , VelLookup(:,2)    );
 
-% hold on; grid on
-% plot(VelLookup(:,2),VelLookup(:,1))
-% plot(LookupTable1.speed,LookupTable1.height)
+figure(fig7); hold on; grid on;
+plot(VelLookup(:,2),VelLookup(:,1));
+plot(LookupTable1.speed,LookupTable1.height);
+plot(LookupTable2.speed,LookupTable2.height);
+xlabel('Velocity');
 
 %% Additional Script Inputs -----------------------------------------------
 
