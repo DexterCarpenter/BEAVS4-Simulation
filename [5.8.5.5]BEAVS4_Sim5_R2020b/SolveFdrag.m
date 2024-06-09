@@ -19,7 +19,7 @@ FgB = mb*g;
 M = [ 0 -1 Fnet+Fd+FgA;...
      -2  1  Fnet+FgB   ];
 
- % sovle system
+% sovle system
 F = rref(M);
 
 % extract answers

@@ -124,7 +124,8 @@ figure(fig7); hold on; grid on;
 plot(VelLookup(:,2),VelLookup(:,1));
 plot(LookupTable1.speed,LookupTable1.height);
 plot(LookupTable2.speed,LookupTable2.height);
-xlabel('Velocity');
+title('Altitude vs. Velocity Lookup Table');
+xlabel('Velocity (ft/s)'); ylabel('Altitude (ft)');
 
 %% Additional Script Inputs -----------------------------------------------
 
@@ -153,7 +154,7 @@ end
 % degree of noise to use in simulations
 % 0-100 corrolating to a percent
 % see Noise.m
-NoiseDeg = 0;
+NoiseDeg = 5;
 
 %% SIMULATIONS ------------------------------------------------------------
 % Use Forward Euler to calculate velocity and altitude
@@ -268,9 +269,9 @@ hold on
 title('PID Graphic');
 xlabel('Time (s)');
 
-plot(Time(:,1),[Vtarg V(:,4) err]);
-lims = [0 30 -50 300]; axis(lims);
-ylabel('Error (m/s)');
+plot(Time(:,1),[Vtarg V(:,4) err]*3.28084);
+lims = [0 30 -200 1000]; axis(lims);
+ylabel('Velocity (ft/s)');
 
 TimeTrgtRched = Time(h(:,4)>=3048,4);
 if isempty(TimeTrgtRched)
@@ -348,4 +349,4 @@ for i = 1:n
     Summary(Time(:,i), h(:,i), V(:,i), Cd(:,i), RocketData, RocketEvent, SimName{:,i})
 end
 
-figure(fig4);
+figure(fig5);
