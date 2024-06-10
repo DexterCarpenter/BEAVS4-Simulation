@@ -46,7 +46,7 @@ while (toc < Time(end,snum)) % while still within the time vector
     if (idx==idxprev); continue; end % if same index as last, skip sending
     idxprev = idx; % update new prev. index
     if (~isempty(idx)) % if the index isn't empty
-        WriteData(Time(idx,snum),h(idx,snum)); % send data to Serial
+        WriteData(SerialPort,Time(idx,snum),h(idx,snum)); % send data to Serial
     end
     if (V(idx,4) < 0); break; end % if past apogee, stop
 end
@@ -55,9 +55,10 @@ fprintf('\nData transfer complete! Yippie!\n');
 
 %% Functions
 
-function WriteData(T,H)
+function WriteData(SerialPort,T,H)
     % send serial data
-    %...
+    write(SerialPort,[T, H],'uint32');
+    data = read(SerialPort,2,'uint32');
     % print data that was sent to cmd window
-    fprintf('\n    T:%0.3fs    H:%0.3fft    ',T,H*3.28084);
+    fprintf('\n    T:%0.3fs    H:%0.3fft    ',data(1),data(2)*3.28084);
 end
