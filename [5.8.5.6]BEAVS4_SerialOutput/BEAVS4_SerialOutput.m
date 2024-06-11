@@ -57,8 +57,8 @@ fprintf('\nData transfer complete! Yippie!\n');
 
 function WriteData(SerialPort,T,H)
     % send serial data
-    write(SerialPort,[T, H],'uint32');
-    data = read(SerialPort,2,'uint32');
+    write(SerialPort,T,'uint8');
+    %data = read(SerialPort,2,'uint32');
     % print data that was sent to cmd window
-    fprintf('\n    T:%0.3fs    H:%0.3fft    ',data(1),data(2)*3.28084);
+    fprintf('\n    T:%0.3fs    H:%0.3fft    ',T,H*3.28084);
 end
