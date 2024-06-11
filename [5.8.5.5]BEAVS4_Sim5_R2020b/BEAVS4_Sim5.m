@@ -154,7 +154,7 @@ end
 % degree of noise to use in simulations
 % 0-100 corrolating to a percent
 % see Noise.m
-NoiseDeg = 5;
+NoiseDeg = 0;
 
 %% SIMULATIONS ------------------------------------------------------------
 % Use Forward Euler to calculate velocity and altitude
