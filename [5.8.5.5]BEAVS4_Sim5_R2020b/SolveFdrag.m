@@ -19,11 +19,10 @@ FgB = mb*g;
 M = [ 0 -1 Fnet+Fd+FgA;...
      -2  1  Fnet+FgB   ];
 
-% sovle system
+% solve system
 F = rref(M);
 
 % extract answers
 Fb = F(1,end);
 Fn = F(2,end);
 end
-

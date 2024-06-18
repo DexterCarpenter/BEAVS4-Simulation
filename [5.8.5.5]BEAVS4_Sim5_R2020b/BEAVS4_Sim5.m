@@ -62,6 +62,9 @@ elseif RocketData_file == "1" % SELECT FIRST DATA SET
 elseif RocketData_file == "2" % SELECT APRIL BROTHERS DATA SET
     RocketData_file = 'RocketDataSet2.csv'; fprintf('Data Set 2 Selected (April Brothers Set)\n');
     RocketEvent_file = 'RocketEventSet2.csv'; fprintf('Rocket Event File Name: \nData Set 2 Selected (April Brothers Set)\n');
+elseif RocketData_file == "3" % SELECT SPACEPORT 2024 SIMULATION
+    RocketData_file = 'RocketDataSet3.csv'; fprintf('Data Set 3 Selected (Spaceport 2024 Set)\n');
+    RocketEvent_file = 'RocketEventSet3.csv'; fprintf('Rocket Event File Name: \nData Set 3 Selected (Spaceport 2024 Set)\n');
 else % CUSTOM DATA SET
     RocketEvent_file = input('Rocket Event File Name: ',"s");
 end
@@ -137,15 +140,21 @@ iterStart = find(RocketData.Time==BurnoutTime); % iteration start time
 BladeWdth = 7*10^-2;    % width of BEAVS Blade (convert to meters)
 BladeCnt = 2;           % Number of Blades
 BladeExtnRate = 110e-3; % meters per second
-BladeExtnMAX = 0.06;    % max extension of BEAVS in m
+% possible pysical hardstop options are at
+%   20, 25, 40, 50, 75, 60, and 100 percent
+% of 60mm
+HardstopLoc = 0.5;
+BladeExtnMAX = 0.06*HardstopLoc; % max extension of BEAVS in m
 
 % Create BladeExtn Vector
-BladeExtn = zeros(numel(RocketData.Time),1) + 6*10^-2; % extension of BEAVS over TIME (convert to meters)
+BladeExtn = zeros(numel(RocketData.Time),1); % extension of BEAVS over TIME (convert to meters)
 BladeExtn(1:iterStart) = 0; % no extension in boost phase
 % ramp up BEAVS extension until fully extended at extension rate
 for i = iterStart:numel(BladeExtn)-1
-    % if max extension is hit, stop iterating
-    if BladeExtn(i) >= BladeExtnMAX; break; end
+    % if max extension is hit set to max
+    if BladeExtn(i) > BladeExtnMAX
+        BladeExtn(i) = BladeExtnMAX;
+    end
     % Extend blades
     BladeExtn(i+1) = BladeExtn(i) + BladeExtnRate*( RocketData.Time(i+1) - RocketData.Time(i) );
 end
@@ -173,9 +182,9 @@ Time = RocketData.Time;
 h    = RocketData.Altitude;
 V    = RocketData.VerticalVelocity;
 
-% Maximum Braking
+% Const. Braking
 n = n+1;
-SimName(n) = {'Maximum Braking'};
+SimName(n) = {'Const. Braking'};
 [Time(:,n), h(:,n), V(:,n), Cd(:,n), Fb(:,n), Fn(:,n)] = ...
     FEuler(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BladeExtnMAX,NoiseDeg,"No Feedback",BladeExtn);
 Fb(700:end,:) = 0;
@@ -287,19 +296,23 @@ grid on
 %% Figure 5
 
 figure(fig5);
-hold on
+hold on;
 
-title('Forces During Coast Phase');
+title('Drag Seperation Forces');
 xlabel('Time (s)');
 
 plot(Time(:,1),abs(Fb(:,2))); % Force on singular BEAVS blade
 plot(Time(:,1),abs(Fn(:,2))); % Force on coupler
-lims = [0 40 0 2000]; axis(lims);
+lims = [0 30 0 2000]; axis(lims);
 ylabel('Force (N)');
+
+yyaxis right
+plot(Time(:,1),BladeExtn*1000);
+ylabel('Blade Extension (mm)');
 
 % Motor Cutoff and Legend
 xline(BurnoutTime,'-',{'Motor Cutoff'},'LabelVerticalAlignment','bottom','LabelHorizontalAlignment','left');
-legend({'Blade Force', 'Coupler Force'},'Location','NorthEast');
+legend({'Blade Force', 'Coupler Force','Blade Extension'},'Location','NorthEast');
 grid on
 
 BladeExtnALLOW = InterpCdInverse(2.*abs(Fb(:,2))./rho./A_ref./(V(:,2).^2),A_ref)./BladeWdth.*1000; % convert to mm
@@ -329,7 +342,7 @@ yline(10000,'--','Target Apogee','LabelVerticalAlignment','middle','LabelHorizon
 xline(BurnoutTime,'-',{'Sim Motor Cutoff'},'LabelVerticalAlignment','bottom','LabelHorizontalAlignment','right');
 xline(mean([AprilBrothersCutoff1 AprilBrothersCutoff2]),'-',{'Real Motor Cutoff'},'LabelVerticalAlignment','bottom','LabelHorizontalAlignment','left');
 
-grid on
+grid on;
 
 % LEFT AXIS -----------------------------------------------------------
 yyaxis right % Velocity
@@ -349,4 +362,40 @@ for i = 1:n
     Summary(Time(:,i), h(:,i), V(:,i), Cd(:,i), RocketData, RocketEvent, SimName{:,i})
 end
 
-figure(fig5);
+%% Drag Seperation
+% Last updated: Monday, 12PM
+
+% OPENROCKET CD's
+Cd_nose   = 0.554;
+Cd_nose_s = 0.034;
+Cd_fore   = 0.132;
+Cd_nac    = 0.002;
+Cd_aft    = 0.273;
+Cd_strake = 0.011;
+Cd_fin    = 0.012;
+
+% Assemble Cd's
+Cd_fore_tot = Cd_nose + Cd_nose_s + Cd_fore + Cd_nac;
+Cd_aft_tot = Cd_aft + Cd_strake + Cd_fin;
+
+A_BEAVS = BladeExtnMAX*BladeWdth*BladeCnt;
+Cd_BEAVS = InterpCd(A_BEAVS,A_ref);
+
+% Forces
+F_fore = 0.5*rho(iterStart)*V(iterStart,1).^2*Cd_fore_tot*A_ref;
+F_aft  = 0.5*rho(iterStart)*V(iterStart,1).^2*(Cd_aft_tot + 2*Cd_BEAVS*(A_BEAVS/A_ref))*A_ref;
+
+% If positive, AFT drag is LARGER than FORE (BAD!!!)
+% If negative, Aft drag is LARGER than FORE (GOOD!!!)
+fprintf('\n---------- Drag Seperation Forces ----------\n');
+fprintf('Max BEAVS Extension: %0.0f%%\n',HardstopLoc*100);
+fprintf('Fore Drag: %0.2f N\n',F_fore);
+fprintf('Aft Drag: %0.2f N\n',F_aft);
+fprintf('If positive, AFT drag is LARGER than FORE (BAD!!!)\n');
+fprintf('If negative, Aft drag is LARGER than FORE (GOOD!!!)\n');
+fprintf('Difference: %0.2f N\n',F_aft-F_fore);
+
+%% 
+
+figure(fig4);
+
