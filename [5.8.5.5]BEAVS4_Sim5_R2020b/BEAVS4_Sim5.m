@@ -163,7 +163,7 @@ end
 % degree of noise to use in simulations
 % 0-100 corrolating to a percent
 % see Noise.m
-NoiseDeg = 0;
+NoiseDeg = 3;
 
 %% SIMULATIONS ------------------------------------------------------------
 % Use Forward Euler to calculate velocity and altitude
@@ -183,7 +183,7 @@ h    = RocketData.Altitude;
 V    = RocketData.VerticalVelocity;
 
 % Const. Braking
-n = n+1;
+n = 2;
 SimName(n) = {'Const. Braking'};
 [Time(:,n), h(:,n), V(:,n), Cd(:,n), Fb(:,n), Fn(:,n)] = ...
     FEuler(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BladeExtnMAX,NoiseDeg,"No Feedback",BladeExtn);
@@ -191,17 +191,17 @@ Fb(700:end,:) = 0;
 Fn(700:end,:) = 0;
 
 % Prediction
-n = n+1;
+n = 3;
 SimName(n) = {'Prediction'};
-[Time(:,n), h(:,n), V(:,n), Cd(:,n), PredBladeExtn, PredBladeExtnDesire] = ...
-    FEuler(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BladeExtnMAX,NoiseDeg,"Pred");
+% [Time(:,n), h(:,n), V(:,n), Cd(:,n), PredBladeExtn, PredBladeExtnDesire] = ...
+%     FEuler(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BladeExtnMAX,NoiseDeg,"Pred");
 
 % PID
-n = n+1;
+n = 4;
 SimName(n) = {'PID'};
-Kp = 1.200e-04; % Kp = 1.320e-04;
-Ki = 1.000e-09; % Ki = 1.000e-07;
-Kd = 6.500e-05; % Kd = 1.004e-06;
+Kp = 0.400e-04; % Kp = 1.200e-04; % Kp = 1.320e-04;
+Ki = 1.250e-09; % Ki = 1.000e-09; % Ki = 1.000e-07;
+Kd = 7.500e-05; % Kd = 6.500e-05; % Kd = 1.004e-06;
 [Time(:,n), h(:,n), V(:,n), Cd(:,n), PidBladeExtn, PIDu, err, Vtarg] = ...
     FEuler(RocketData,RocketEvent,Cd_rocket,BladeWdth,BladeCnt,BladeExtnRate,BladeExtnMAX,NoiseDeg,"PID",VelLookup,Kp,Ki,Kd);
 
@@ -235,7 +235,7 @@ lims = [0 50 0 2]; axis(lims);
 
 % Motor Cutoff and Legend
 xline(BurnoutTime,'-',{'Motor Cutoff'},'LabelVerticalAlignment','bottom','LabelHorizontalAlignment','left');
-legend(SimName,'Location','southeast')
+legend(SimName,'Location','southeast');
 grid on
 
 %% Figure 2
@@ -263,7 +263,7 @@ hold on
 title('Extension & Desired Extension');
 xlabel('Time (s)');
 
-plot(Time(:,1),[PredBladeExtn PredBladeExtnDesire]*1000);
+%plot(Time(:,1),[PredBladeExtn PredBladeExtnDesire]*1000);
 lims = [0 25 0 BladeExtnMAX*1000]*1.1; axis(lims);
 ylabel('Extension (mm)');
 
@@ -279,7 +279,7 @@ title('PID Graphic');
 xlabel('Time (s)');
 
 plot(Time(:,1),[Vtarg V(:,4) err]*3.28084);
-lims = [0 30 -200 1000]; axis(lims);
+lims = [0 40 -200 1000]; axis(lims);
 ylabel('Velocity (ft/s)');
 
 TimeTrgtRched = Time(h(:,4)>=3048,4);
@@ -395,7 +395,7 @@ fprintf('If positive, AFT drag is LARGER than FORE (BAD!!!)\n');
 fprintf('If negative, Aft drag is LARGER than FORE (GOOD!!!)\n');
 fprintf('Difference: %0.2f N\n',F_aft-F_fore);
 
-%% 
+%%
 
 figure(fig4);
 
