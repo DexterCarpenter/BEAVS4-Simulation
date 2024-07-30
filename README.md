@@ -56,4 +56,6 @@ However, this script was not written for general use. The primary function is to
 
 ### Reference
 
+See also Colin Hale-Brown's repository for [BEAVS 4.0](https://github.com/colinhalebrown/BEAVS4)
+
 This uses [MATLAB R2020b](https://www.mathworks.com/downloads/)
