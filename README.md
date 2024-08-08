@@ -6,6 +6,8 @@ Winter & Spring, 2024
 
 This repository hosts MATLAB scripts and data to run a simulation for Oregon State University's Experimental Sounding Rocket Association Team. The simulation is used to gain understanding of how the Blade Extending Apogee Variance System (BEAVS) will affect the rocket's flight path. The simulation takes [OpenRocket](https://openrocket.info/) data export in conjunction with [OpenMotor](https://github.com/reilleya/openMotor) custom motors as a basis.
 
+Read more about it on my [Website](https://dextercarpenter.github.io/portfolio#beavs-simulation)
+
 Objectives
 - Understand the total braking power of BEAVS given varying rocket designs
 - Separation failure risk analysis
