@@ -163,7 +163,7 @@ end
 % degree of noise to use in simulations
 % 0-100 corrolating to a percent
 % see Noise.m
-NoiseDeg = 3;
+NoiseDeg = 0;
 
 %% SIMULATIONS ------------------------------------------------------------
 % Use Forward Euler to calculate velocity and altitude
@@ -199,7 +199,7 @@ SimName(n) = {'Prediction'};
 % PID
 n = 4;
 SimName(n) = {'PID'};
-Kp = 0.400e-04; % Kp = 1.200e-04; % Kp = 1.320e-04;
+Kp = 0.200e-04; % Kp = 1.200e-04; % Kp = 1.320e-04;
 Ki = 1.250e-09; % Ki = 1.000e-09; % Ki = 1.000e-07;
 Kd = 7.500e-05; % Kd = 6.500e-05; % Kd = 1.004e-06;
 [Time(:,n), h(:,n), V(:,n), Cd(:,n), PidBladeExtn, PIDu, err, Vtarg] = ...

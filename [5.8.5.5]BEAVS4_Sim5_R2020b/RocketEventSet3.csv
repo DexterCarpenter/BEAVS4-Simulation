@@ -561,10 +561,10 @@
 
 
 
+# Event APOGEE occurred at t=25.287 seconds
 
-# Event APOGEE occurred at t=25.337 seconds
+# Event RECOVERY_DEVICE_DEPLOYMENT occurred at t=25.288 seconds
 
-# Event RECOVERY_DEVICE_DEPLOYMENT occurred at t=25.338 seconds
 
 
 
@@ -923,10 +923,10 @@
 
 
 
-# Event RECOVERY_DEVICE_DEPLOYMENT occurred at t=200.755 seconds
 
 
 
+# Event RECOVERY_DEVICE_DEPLOYMENT occurred at t=200.643 seconds
 
 
 
@@ -1225,60 +1225,6 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Event GROUND_HIT occurred at t=299.743 seconds
-# Event SIMULATION_END occurred at t=299.743 seconds
+# Event GROUND_HIT occurred at t=300.659 seconds
+# Event SIMULATION_END occurred at t=300.659 seconds
 
