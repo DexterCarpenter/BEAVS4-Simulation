@@ -4,7 +4,7 @@ Dexter Carpenter
 
 Winter & Spring, 2024
 
-This repository hosts MATLAB scripts and data to run a simulation for Oregon State University's Experimental Sounding Rocket Association Team. The simulation is used to gain understanding of how the Blade Extending Apogee Variance System (BEAVS) will affect the rocket's flight path. The simulation takes [OpenRocket](https://openrocket.info/) data export in conjunction with [OpenMotor](https://github.com/reilleya/openMotor) custom motors as a basis.
+This repository hosts MATLAB scripts and data to run a simulation for Oregon State University's Experimental Sounding Rocket Association Team. The simulation is used to gain understanding of how the **Blade Extending Apogee Variance System** (Air Brakes) will affect the rocket's flight path. The simulation takes [OpenRocket](https://openrocket.info/) data export in conjunction with [OpenMotor](https://github.com/reilleya/openMotor) custom motors as a basis.
 
 Read more about it on my [Website](https://dextercarpenter.github.io/portfolio#beavs-simulation)
 
@@ -61,3 +61,5 @@ However, this script was not written for general use. The primary function is to
 See also Colin Hale-Brown's repository for [BEAVS 4.0](https://github.com/colinhalebrown/BEAVS4)
 
 This uses [MATLAB R2020b](https://www.mathworks.com/downloads/)
+
+This very helpful [Trajectory Calculation](https://web.mit.edu/16.unified/www/FALL/systems/Lab_Notes/traj.pdf) PDF by MIT.
