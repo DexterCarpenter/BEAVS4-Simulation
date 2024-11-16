@@ -98,6 +98,7 @@ end
 
 fprintf('\n---------------------------------------------------------------------------\n');
 fprintf('Extracting Rocket Data...\n');
+tic
 
 % Extract Rocket DATA
 RocketData = readtable(RocketData_file,'VariableNamingRule','preserve'); clear RocketData_file;
@@ -125,6 +126,7 @@ RocketEvent.Time = str2double(RocketEvent.Time);
 RocketData = fillmissing(RocketData, 'previous');
 
 fprintf('\nExtracting Rocket Data Complete!\n');
+toc
 
 %% Import Velocity Lookup Table Reference Data ----------------------------
 
@@ -323,9 +325,10 @@ Fn(700:end,:) = 0;
 fprintf('%s Complete!\n',SimName{SimNum});
 
 % Prediction
+% !!! NOT A GREAT METHOD, UNSUPPORTED !!!
 SimNum = 3;
 SimName(SimNum) = {'Prediction'};
-% [Time(:,SimNum), h(:,SimNum), V(:,SimNum), Cd.sim(:,SimNum), PredBlade.Extn, PredBlade.ExtnDesire] = ...
+% [Time(:,SimNum), h(:,SimNum), V(:,SimNum), Cd.sim(:,SimNum), PredBladeExtn, PredBladeExtnDesire] = ...
 %     FEuler(RocketData,RocketEvent,Cd.openRocket,Blade.Wdth,Blade.Cnt,Blade.ExtnRate,Blade.ExtnMAX,NoiseDeg,"Pred");
 % fprintf('%s Complete!\n',SimName{SimNum});
 
@@ -335,7 +338,9 @@ SimName(SimNum) = {'PID'};
 Kp = 0.200e-04; % Kp = 1.200e-04; % Kp = 1.320e-04;
 Ki = 1.250e-09; % Ki = 1.000e-09; % Ki = 1.000e-07;
 Kd = 7.500e-05; % Kd = 6.500e-05; % Kd = 1.004e-06;
-[Time(:,SimNum), h(:,SimNum), V(:,SimNum), Cd.sim(:,SimNum), PidBlade.Extn, PIDu, err, Vtarg] = ...
+% print K values
+fprintf('PID Constants:\n    Kp = %0.3e\n    Ki = %0.3e\n    Kd = %0.3e\n',Kp,Ki,Kd);
+[Time(:,SimNum), h(:,SimNum), V(:,SimNum), Cd.sim(:,SimNum), PidBladeExtn, PIDu, err, Vtarg] = ...
     FEuler(RocketData,RocketEvent,Cd.openRocket,Blade.Wdth,Blade.Cnt,Blade.ExtnRate,Blade.ExtnMAX,NoiseDeg,"PID",VelLookup,Kp,Ki,Kd);
 fprintf('%s Complete!\n',SimName{SimNum});
 
@@ -349,11 +354,11 @@ fprintf('Creating Figures...\n');
 tic
 
 %% Figure 1
-% Altitude and Cd
+% Control Range Graphic
 
 figure(fig1);
 hold on
-title('BEAVS 4.0 Control Range Graphic');
+title('Control Range Graphic');
 xlabel('Time (s)');
 
 % LEFT AXIS ---------------------------------------------------------------
@@ -384,7 +389,7 @@ grid on
 fprintf('Fig 1 Complete\n');
 
 %% Figure 2
-% Velocity
+% Velocity vs. Time
 
 figure(fig2);
 hold on
@@ -404,14 +409,16 @@ grid on
 fprintf('Fig 2 Complete\n');
 
 %% Figure 3
+% Extension & Desired Extension
 
 figure(fig3);
 hold on
 title('Extension & Desired Extension');
 xlabel('Time (s)');
 
-%plot(Time(:,1),[PredBlade.Extn PredBlade.ExtnDesire]*1000);
-plot(Time(:,1),PidBlade.Extn*1000);
+% prediction method is disabled
+% plot(Time(:,1),[PredBladeExtn PredBladeExtnDesire]*1000);
+plot(Time(:,1),PidBladeExtn*1000);
 lims = [0 25 0 Blade.ExtnMAX*1000]*1.1; axis(lims);
 ylabel('Extension (mm)');
 
@@ -422,23 +429,45 @@ grid on
 fprintf('Fig 3 Complete\n');
 
 %% Figure 4
+% PID Graphic
 
 figure(fig4)
 hold on
 title('PID Graphic');
 xlabel('Time (s)');
 
+% plot target velocity, actualy velocity from PID data set, and error
+% between the two
 plot(Time(:,1),[Vtarg V(:,4) err]*3.28084);
-lims = [0 40 -200 1000]; axis(lims);
+lims = [0 40 -200 1000]; axis(lims); % cut off extraneous data
 ylabel('Velocity (ft/s)');
 
-TimeTrgtRched = Time(h(:,4)>=3048,4);
-if isempty(TimeTrgtRched)
+% find time at which the target altitude was reached
+TimeTrgtRched = Time(h(:,4)>=hTarg,4);
+if isempty(TimeTrgtRched) % didn't get to target apogee
     TimeTrgtRched = Time(h(:,4)==max(h(:,4)),4);
-else
+    hTrgtRched = max(h(:,4));
+else % passed target apogee
     TimeTrgtRched = TimeTrgtRched(1);
+    hTrgtRched = hTarg;
 end
-xline(TimeTrgtRched,'--',num2str(max(h(:,4))*3.281),'LabelHorizontalAlignment','left');
+
+% find time at which apogee was reached
+TimeApogeeRched = Time(h(:,4)==max(h(:,4)),4);
+hApogeeRched = max(h(:,4));
+
+% target apogee line (black)
+xline(TimeTrgtRched,'--',"Target",...
+      'LabelHorizontalAlignment','left');
+text(TimeTrgtRched,lims(4)-((lims(4)-lims(3))*0.1),sprintf(' t=%0.1fs\n h=%0.0fft',TimeTrgtRched,hTrgtRched*3.28084));
+
+% actual apogee line (green)
+xline(TimeApogeeRched,'--',"Apogee",...
+      'LabelHorizontalAlignment','left',...
+      'Color',"#77AC30",...
+      "LabelVerticalAlignment","bottom");
+text(TimeApogeeRched,lims(3)+((lims(4)-lims(3))*0.1),sprintf(' t=%0.1fs\n h=%0.0fft',TimeApogeeRched,hApogeeRched*3.28084),...
+     'Color',"#77AC30");
 
 legend('Target','Actual','Error','Location','NorthEast');
 grid on
@@ -446,6 +475,7 @@ grid on
 fprintf('Fig 4 Complete\n');
 
 %% Figure 5
+% Drag Seperation Forces
 
 figure(fig5);
 hold on;
@@ -472,6 +502,9 @@ Blade.ExtnALLOW = InterpCdInverse(2.*abs(Fb(:,2))./rho./A.ref./(V(:,2).^2),A.ref
 fprintf('Fig 5 Complete\n');
 
 %% Figure 6
+% Compare to Real
+% Similar to Control Range Graphic however, with data from April Brothers
+% test launch plotted as well
 
 % Plot
 figure(fig6);
@@ -535,8 +568,13 @@ toc
 
 % output summary to cmd window for each simulation
 for i = 1:SimNum
+    % comment out to reduce cmd window spam
     %Summary(Time(:,i), h(:,i), V(:,i), Cd.sim(:,i), RocketData, RocketEvent, SimName{:,i})
 end
+
+%% -------------------- !!! TERMINATE SCRIPT !!! --------------------
+% comment out or delete to run the rest
+return
 
 %% Drag Seperation
 
