@@ -34,6 +34,10 @@ Adds PID option to start finding Kp, Ki, and Kd values. This PID evaluated the e
 
 Instead of having the PID evaluate the error between the _altitude_, it now uses a lookup table to determine the error between a _velocity_. The lookup table is based on a previous test flight.
 
+### [Simulation 6](https://github.com/DexterCarpenter/BEAVS4-Simulation/tree/main/%5B5.8.5.7%5DBEAVS4_Sim6_R2023a)
+
+This version has aimed to make the simulation more interactive and user-friendly. There are more prompts for user input instead of hard-coding inputs into the main script. The code is better commented and functions are explained. Version 6 is likely a 'final release' for the BEAVS 4 Simulation.
+
 ### Use
 
 To use this simulation to test your own [OpenRocket](https://openrocket.info/) rockets, you must use the following file export format:
@@ -60,6 +64,8 @@ However, this script was not written for general use. The primary function is to
 
 See also Colin Hale-Brown's repository for [BEAVS 4.0](https://github.com/colinhalebrown/BEAVS4)
 
-This uses [MATLAB R2020b](https://www.mathworks.com/downloads/)
+This uses [MATLAB R2020b](https://www.mathworks.com/downloads/) or MATLAB R2023a for Version 6
+
+Requires [Statistics and Machine Learning Toolbox](https://www.mathworks.com/products/statistics.html)
 
 This very helpful [Trajectory Calculation](https://web.mit.edu/16.unified/www/FALL/systems/Lab_Notes/traj.pdf) PDF by MIT.
