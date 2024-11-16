@@ -124,11 +124,13 @@ VelLookup(:,2) = (0:LookupRes:max(LookupTable1.speed*1.05))';
 VelLookup(:,1) = polyval(    polyfit(LookupTable1.speed,LookupTable1.height,5) , VelLookup(:,2)    );
 
 figure(fig7); hold on; grid on;
-plot(VelLookup(:,2),VelLookup(:,1));
-plot(LookupTable1.speed,LookupTable1.height);
-plot(LookupTable2.speed,LookupTable2.height);
+plot(VelLookup(:,2)*3.28084,VelLookup(:,1)*3.28084);
+plot(LookupTable1.speed*3.28084,LookupTable1.height*3.28084);
+plot(LookupTable2.speed*3.28084,LookupTable2.height*3.28084,':');
 title('Altitude vs. Velocity Lookup Table');
 xlabel('Velocity (ft/s)'); ylabel('Altitude (ft)');
+legend('Polynomial Lookup','April Brother Data Set 1','April Brother Data Set 2');
+lims = axis; lims(1) = 0; axis(lims);
 
 %% Additional Script Inputs -----------------------------------------------
 
@@ -264,6 +266,7 @@ title('Extension & Desired Extension');
 xlabel('Time (s)');
 
 %plot(Time(:,1),[PredBladeExtn PredBladeExtnDesire]*1000);
+plot(Time(:,1),PidBladeExtn*1000);
 lims = [0 25 0 BladeExtnMAX*1000]*1.1; axis(lims);
 ylabel('Extension (mm)');
 
@@ -397,5 +400,5 @@ fprintf('Difference: %0.2f N\n',F_aft-F_fore);
 
 %%
 
-figure(fig4);
+figure(fig7);
 
