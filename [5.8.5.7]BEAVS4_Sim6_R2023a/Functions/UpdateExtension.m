@@ -29,14 +29,14 @@ function [Cd,BladeExtn] = UpdateExtension(Time, A_ref, Cd_rocket, BladeExtnCurre
 if BladeExtnDesire > BEAVSExtnMAX
     % set to max extension
     BladeExtn = BEAVSExtnMAX;
-% check if unable to adjust extension to desired in time step
-elseif abs(BladeExtnDesire-BladeExtnCurrent) > BladeExtnRate*(Time(2)-Time(1))
-    % adjust extension by maximum amount in time step
-    BladeExtn = BladeExtnCurrent + sign(BladeExtnDesire-BladeExtnCurrent)*BladeExtnRate*(Time(2)-Time(1));
 % check if desired is below zero (cannot be negative)
 elseif BladeExtnDesire < 0
     % set to zero
     BladeExtn = 0;
+% check if unable to adjust extension to desired in time step
+elseif abs(BladeExtnDesire-BladeExtnCurrent) > BladeExtnRate*(Time(2)-Time(1))
+    % adjust extension by maximum amount in time step
+    BladeExtn = BladeExtnCurrent + sign(BladeExtnDesire-BladeExtnCurrent)*BladeExtnRate*(Time(2)-Time(1));
 else
     % set to desired extension
     BladeExtn = BladeExtnDesire;
