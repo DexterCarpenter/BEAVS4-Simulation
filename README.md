@@ -64,6 +64,8 @@ However, this script was not written for general use. The primary function is to
 
 See also Colin Hale-Brown's repository for [BEAVS 4.0](https://github.com/colinhalebrown/BEAVS4)
 
+Brennan's repository for [BEAVS 5.0](https://github.com/brennanwaldow/BEAVS5)
+
 This uses [MATLAB R2020b](https://www.mathworks.com/downloads/) or MATLAB R2023a for Version 6
 
 Requires [Statistics and Machine Learning Toolbox](https://www.mathworks.com/products/statistics.html)
